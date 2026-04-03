@@ -124,7 +124,7 @@ export const INCENSE_MASTERS: IncenseMaster[] = [
     id: "latias",
     name: "ラティアスのおこう",
     icon: "🟣",
-    imageUrl: "/img/okou_pokemon.png",
+    imageUrl: "/img/okou_normal.png",
     effectType: "pokemon",
     effectShort: "ラティアス出現",
     effectDetail: "ラティアスが追加枠として出現する。こううんのおこうと組み合わせて大量のゆめのかけらを狙える。",

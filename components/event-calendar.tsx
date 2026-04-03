@@ -130,46 +130,114 @@ const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, mondaySlot: nul
 
 // ─── 提案ロジック ──────────────────────────────────────────
 
+/** ニュームーンデーの dayIndex（4/16木・4/17金・4/18土） */
+const NEWMOON_DAYS = new Set([10, 11, 12])
+
+/**
+ * 週末から平日へ降順に並べた全14日
+ * 土日 → 金 → 木 → 水 → 火 → 月 の順（同曜日は第2週→第1週）
+ */
+const DAYS_WEEKEND_FIRST: DayInfo[] = (() => {
+  const order = ["日", "土", "金", "木", "水", "火", "月"]
+  return [...EVENT_DAYS].sort((a, b) => {
+    const ai = order.indexOf(a.dayOfWeek)
+    const bi = order.indexOf(b.dayOfWeek)
+    if (ai !== bi) return ai - bi
+    return b.dayIndex - a.dayIndex  // 同曜日は後半（第2週）優先
+  })
+})()
+
+/** おこうスロット（slot1/slot2）に空きがあれば配置して true を返す */
+function placeIncense(plan: Record<number, DaySlots>, dayIndex: number, id: string): boolean {
+  const s = plan[dayIndex]
+  if (!s.slot1 && s.slot2 !== id) { s.slot1 = id; return true }
+  if (!s.slot2 && s.slot1 !== id) { s.slot2 = id; return true }
+  return false
+}
+
 function generatePlan(
   inventory: Record<string, number>
 ): Record<number, DaySlots> {
   const plan: Record<number, DaySlots> = {}
   EVENT_DAYS.forEach(d => { plan[d.dayIndex] = EMPTY_SLOTS() })
 
-  // 残在庫をコピー
-  const remaining = { ...inventory }
+  const rem = { ...inventory }
 
-  // おこうのルールに従って優先日を選択
-  for (const incense of INCENSE_MASTERS) {
-    let qty = remaining[incense.id] ?? 0
-    if (qty === 0) continue
+  // ① いいキャンプチケット（月曜固定・上限2枚）
+  const campDays = [0, 7]  // dayIndex: 4/6(月), 4/13(月)
+  for (const di of campDays) {
+    if ((rem["good-camp"] ?? 0) <= 0) break
+    plan[di].campSlot = "good-camp"
+    rem["good-camp"]--
+  }
 
-    // ルールに従って配置優先日を選ぶ
-    const preferred = EVENT_DAYS.filter(d => {
-      if (incense.preferWeekend) return d.isWeekend
-      if (incense.preferEarlyWeek) return d.isEarlyWeek
-      if (incense.preferLate) return d.isLate
-      return true  // spreadEvenly → 全日
+  // ② ラティアスのおこう（ニュームーンデー優先 → 週末から順に詰めて配置）
+  const latiasOrder: DayInfo[] = [
+    ...EVENT_DAYS.filter(d => NEWMOON_DAYS.has(d.dayIndex)),
+    ...DAYS_WEEKEND_FIRST.filter(d => !NEWMOON_DAYS.has(d.dayIndex)),
+  ]
+  const latiasSeen = new Set<number>()
+  for (const day of latiasOrder) {
+    if ((rem["latias"] ?? 0) <= 0) break
+    if (latiasSeen.has(day.dayIndex)) continue
+    latiasSeen.add(day.dayIndex)
+    const s = plan[day.dayIndex]
+    if (s.slot1 === "pokemon" || s.slot2 === "pokemon") continue
+    if (placeIncense(plan, day.dayIndex, "latias")) rem["latias"]--
+  }
+
+  // ③ なかよしのおこう（ラティアス配置日を週末から逆算して優先配置）
+  for (const day of DAYS_WEEKEND_FIRST) {
+    if ((rem["nakayoshi"] ?? 0) <= 0) break
+    const s = plan[day.dayIndex]
+    const hasLatias = s.slot1 === "latias" || s.slot2 === "latias"
+    if (!hasLatias) continue
+    if (placeIncense(plan, day.dayIndex, "nakayoshi")) rem["nakayoshi"]--
+  }
+
+  // ④ こううんのおこう
+  //    優先順: ニュームーンデー → 週末 → ラティアス配置日でなかよしが入らなかった日（代替）
+  const kouunOrder: DayInfo[] = [
+    // ニュームーンデー（dayIndex昇順）
+    ...EVENT_DAYS.filter(d => NEWMOON_DAYS.has(d.dayIndex)),
+    // 週末（NEWMOON除く）
+    ...DAYS_WEEKEND_FIRST.filter(d => d.isWeekend && !NEWMOON_DAYS.has(d.dayIndex)),
+    // ラティアス配置日でなかよしが入っていない平日のみ代替（週末はなかよし優先のため除外）
+    ...EVENT_DAYS.filter(d => {
+      const s = plan[d.dayIndex]
+      const hasLatias = s.slot1 === "latias" || s.slot2 === "latias"
+      const hasNakayoshi = s.slot1 === "nakayoshi" || s.slot2 === "nakayoshi"
+      return hasLatias && !hasNakayoshi && !d.isWeekend
+    }),
+    // 残り平日
+    ...DAYS_WEEKEND_FIRST.filter(d => !d.isWeekend && !NEWMOON_DAYS.has(d.dayIndex)),
+  ]
+  const kouunSeen = new Set<number>()
+  for (const day of kouunOrder) {
+    if ((rem["kouun"] ?? 0) <= 0) break
+    if (kouunSeen.has(day.dayIndex)) continue
+    kouunSeen.add(day.dayIndex)
+    if (placeIncense(plan, day.dayIndex, "kouun")) rem["kouun"]--
+  }
+
+  // ⑤ マスターサブレ（ラティアス配置日の最初の1日のみ）
+  if ((rem["master-sable"] ?? 0) > 0) {
+    const firstLatiasDay = EVENT_DAYS.find(d => {
+      const s = plan[d.dayIndex]
+      return s.slot1 === "latias" || s.slot2 === "latias"
     })
-
-    const targets = preferred.length > 0 ? preferred : EVENT_DAYS
-
-    for (const day of targets) {
-      if (qty <= 0) break
-      const slots = plan[day.dayIndex]
-
-      // slot1 が空 かつ 同じIDが slot2 にない
-      if (!slots.slot1 && slots.slot2 !== incense.id) {
-        slots.slot1 = incense.id
-        qty--
-      } else if (!slots.slot2 && slots.slot1 !== incense.id) {
-        // slot1 が埋まっていて slot2 が空
-        slots.slot2 = incense.id
-        qty--
-      }
+    if (firstLatiasDay) {
+      plan[firstLatiasDay.dayIndex].sableSlot = "master-sable"
+      rem["master-sable"]--
     }
+  }
 
-    remaining[incense.id] = qty
+  // ⑥ ポケモンのおこう（ラティアスが入っていない日に週末から詰めて配置）
+  for (const day of DAYS_WEEKEND_FIRST) {
+    if ((rem["pokemon"] ?? 0) <= 0) break
+    const s = plan[day.dayIndex]
+    if (s.slot1 === "latias" || s.slot2 === "latias") continue  // ラティアスの日は除外
+    if (placeIncense(plan, day.dayIndex, "pokemon")) rem["pokemon"]--
   }
 
   return plan
