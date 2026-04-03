@@ -162,7 +162,7 @@ export function EventExchange() {
           <ShoppingBag className="w-5 h-5 text-blue-400" />
           <h1 className="text-xl font-bold">イベント交換一覧</h1>
         </div>
-        <p className="text-xs text-slate-400">春のコロコロイベント｜4/6 〜 4/19</p>
+        <p className="text-xs text-slate-400">ラティアスリサーチ｜4/6 〜 4/19</p>
       </div>
 
       {/* 進捗サマリー */}

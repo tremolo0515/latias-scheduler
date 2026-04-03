@@ -10,7 +10,7 @@ Create a Pokemon Sleep event calendar view component using React and Tailwind CS
 A 14-day event planner for the Pokemon Sleep mobile game. The event runs from Monday April 6, 2026 to Sunday April 19, 2026.
 
 ## Layout
-- Page title at the top: "🌙 春のコロコロイベント" with event period "4/6(月) 〜 4/19(日) 残り14日"
+- Page title at the top: "🌙 ラティアスリサーチ" with event period "4/6(月) 〜 4/19(日) 残り14日"
 - Display a 2-row × 7-column grid (Week 1: Apr 6–12, Week 2: Apr 13–19)
 - Each row represents one week, labeled "第1週" and "第2週"
 

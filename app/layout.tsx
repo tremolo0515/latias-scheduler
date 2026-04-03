@@ -7,7 +7,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: '🌙 春のコロコロイベント | ポケモンスリープ',
+  title: '🌙 ラティアスリサーチ | ポケモンスリープ',
   description: 'ポケモンスリープの14日間イベントプランナー - アイテム管理と進捗トラッキング',
   generator: 'v0.app',
   icons: {
