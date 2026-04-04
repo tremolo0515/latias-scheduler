@@ -814,7 +814,7 @@ function ItemSlot({
             draggable={!!onDragFromSlot}
             onDragStart={onDragFromSlot}
           />
-          <button onClick={onClear} className="absolute -top-2 -right-2 z-20 w-4 h-4 rounded-full bg-white border border-gray-300 flex items-center justify-center text-gray-400 hover:text-red-500 text-xs">
+          <button onClick={(e) => { e.stopPropagation(); onClear() }} className="absolute -top-2 -right-2 z-20 w-4 h-4 rounded-full bg-white border border-gray-300 flex items-center justify-center text-gray-400 hover:text-red-500 text-xs">
             <X className="w-1.5 h-1.5" />
           </button>
         </>
