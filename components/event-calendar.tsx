@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { Sparkles, Moon, Star, X } from "lucide-react"
+import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
+import { Sparkles, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { INCENSE_MASTERS, getIncenseById, type IncenseMaster } from "@/lib/data/items"
 
@@ -24,8 +25,9 @@ function isIncenseItem(id: string) {
 interface DaySlots {
   slot1: string | null
   slot2: string | null
-  mondaySlot: string | null   // おてつだいホイッスル専用
-  campSlot: string | null     // いいキャンプチケット専用
+  mondaySlot: string | null      // おてつだいホイッスル専用
+  mondayWhistleCount: number     // ホイッスルの使用個数（複数可）
+  campSlot: string | null        // いいキャンプチケット専用
   sableSlot: string | null
 }
 
@@ -72,61 +74,51 @@ interface CalendarEvent {
   week: number
   barColor: string
   textColor: string
-  effects: { icon: string; label: string; note?: string }[]
+  effects: { label: string; note?: string }[]
 }
 
 const CALENDAR_EVENTS: CalendarEvent[] = [
   {
     id: "latias-w1",
-    name: "🔵 ラティアスリサーチ（第1週）",
+    name: "ラティアスリサーチ（第1週）",
     colStart: 1, colSpan: 7, week: 0,
-    barColor: "bg-blue-700/70 hover:bg-blue-600/80",
+    barColor: "bg-red-700/70 hover:bg-red-700/80",
     textColor: "text-blue-100",
     effects: [
-      { icon: "🌀", label: "他の睡眠タイプのポケモン出現" },
-      { icon: "🎁", label: "イベントアイテム獲得", note: "1日1回" },
-      { icon: "⬆️", label: "ピックアップポケモン出現確率UP" },
-      { icon: "🍖", label: "通常おてつだいの食材+1個", note: "スキルとくいのポケモン" },
-      { icon: "⚡", label: "メインスキル発生確率 1.25倍" },
-      { icon: "📦", label: "最大所持数+8" },
-      { icon: "🔼", label: "メインスキルのレベル+2" },
+      { label: "他の睡眠タイプのポケモン出現" },
+      { label: "ピックアップポケモン出現確率UP" },
+      { label: "スキルとくい強化", note: "食材+1,メインスキル確率1.25倍,最大所持数+8,メインスキルレベル+2" },
     ],
   },
   {
     id: "latias-w2",
-    name: "🔵 ラティアスリサーチ（第2週）",
+    name: "ラティアスリサーチ（第2週）",
     colStart: 1, colSpan: 7, week: 1,
-    barColor: "bg-indigo-700/70 hover:bg-indigo-600/80",
+    barColor: "bg-red-700/70 hover:bg-red-700/80",
     textColor: "text-indigo-100",
     effects: [
-      { icon: "🌀", label: "他の睡眠タイプのポケモン出現" },
-      { icon: "🎁", label: "イベントアイテム獲得", note: "1日1回" },
-      { icon: "⬆️", label: "ピックアップポケモン出現確率UP" },
-      { icon: "🍖", label: "通常おてつだいの食材+1個", note: "スキルとくいのポケモン" },
-      { icon: "🍒", label: "通常おてつだいのきのみ+1個" },
-      { icon: "⚡", label: "メインスキル発生確率 1.25倍" },
-      { icon: "📦", label: "最大所持数+15" },
-      { icon: "🔼", label: "メインスキルのレベル+5" },
-      { icon: "🌱", label: "一定エナジーからカビゴン育成開始", note: "大きいカビゴン" },
-      { icon: "💤", label: "ねむけパワー 1.5倍", note: "4/19のみ" },
+      { label: "他の睡眠タイプのポケモン出現" },
+      { label: "ピックアップポケモン出現確率UP" },
+      { label: "スキルとくい強化", note: "食材+1,きのみ+1,メインスキル確率1.25倍,最大所持数+15,メインスキルレベル+5" },
+      { label: "一定エナジーからカビゴン育成開始" },
+      { label: "ねむけパワー1.5倍(4/19)"},
     ],
   },
   {
     id: "newmoon",
-    name: "🌑 ニュームーンデー",
+    name: "ニュームーンデー",
     colStart: 4, colSpan: 3, week: 1,  // 4/16(木)〜4/18(土)
     barColor: "bg-indigo-700/70 hover:bg-indigo-600/80",
     textColor: "text-indigo-100",
     effects: [
-      { icon: "🌑", label: "幻のポケモン出現", note: "新月の日のみ" },
-      { icon: "🍬", label: "おやつ満腹になりづらい", note: "1日1回目のみ" },
-      { icon: "✨", label: "色違い出現確率UP" },
-      { icon: "💫", label: "FP+3", note: "新月以外の日" },
+      { label: "幻のポケモン出現" },
+      { label: "満腹になりづらい", },
+      { label: "色違い出現確率UP" },
     ],
   },
 ]
 
-const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, mondaySlot: null, campSlot: null, sableSlot: null })
+const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null })
 
 // ─── 提案ロジック ──────────────────────────────────────────
 
@@ -171,9 +163,9 @@ function generatePlan(
     rem["good-camp"]--
   }
 
-  // ② ラティアスのおこう（ニュームーンデー優先 → 週末から順に詰めて配置）
+  // ② ラティアスのおこう（ニュームーンデー3日目優先 → 週末から順に詰めて配置）
   const latiasOrder: DayInfo[] = [
-    ...EVENT_DAYS.filter(d => NEWMOON_DAYS.has(d.dayIndex)),
+    ...EVENT_DAYS.filter(d => NEWMOON_DAYS.has(d.dayIndex)).sort((a, b) => b.dayIndex - a.dayIndex),
     ...DAYS_WEEKEND_FIRST.filter(d => !NEWMOON_DAYS.has(d.dayIndex)),
   ]
   const latiasSeen = new Set<number>()
@@ -245,6 +237,10 @@ function generatePlan(
 
 // ─── メインコンポーネント ──────────────────────────────────
 
+const LS_INVENTORY = "latias-inventory"
+const LS_SLOTS = "latias-slots"
+const LS_MEMO = "latias-memo"
+
 export function EventCalendar() {
   // 在庫数（incense id → 個数）
   const [inventory, setInventory] = useState<Record<string, number>>(
@@ -254,10 +250,44 @@ export function EventCalendar() {
   const [daySlots, setDaySlots] = useState<Record<number, DaySlots>>(
     () => Object.fromEntries(EVENT_DAYS.map(d => [d.dayIndex, EMPTY_SLOTS()]))
   )
+
+  // mount後にlocalStorageから復元（SSRと初期値を一致させてhydration errorを防ぐ）
+  useEffect(() => {
+    try {
+      const inv = localStorage.getItem(LS_INVENTORY)
+      if (inv) setInventory(prev => ({ ...prev, ...JSON.parse(inv) }))
+    } catch {}
+    try {
+      const slots = localStorage.getItem(LS_SLOTS)
+      if (slots) {
+        const parsed = JSON.parse(slots)
+        setDaySlots(prev => Object.fromEntries(
+          EVENT_DAYS.map(d => [d.dayIndex, { ...prev[d.dayIndex], ...parsed[d.dayIndex] }])
+        ))
+      }
+    } catch {}
+  }, [])
+
+  const [memo, setMemo] = useState("")
+
+  // mount後にメモ復元
+  useEffect(() => {
+    try {
+      const m = localStorage.getItem(LS_MEMO)
+      if (m !== null) setMemo(m)
+    } catch {}
+  }, [])
+
+  // 変更のたびにlocalStorageへ保存
+  useEffect(() => { localStorage.setItem(LS_INVENTORY, JSON.stringify(inventory)) }, [inventory])
+  useEffect(() => { localStorage.setItem(LS_SLOTS, JSON.stringify(daySlots)) }, [daySlots])
+  useEffect(() => { localStorage.setItem(LS_MEMO, memo) }, [memo])
+
 const [dragId, setDragId] = useState<string | null>(null)
+  const [dragSource, setDragSource] = useState<{ dayIndex: number; slot: keyof DaySlots } | null>(null)
   const [dragOverDay, setDragOverDay] = useState<number | null>(null)
   const [isSuggested, setIsSuggested] = useState(false)
-  const [activeEventId, setActiveEventId] = useState<string | null>(null)
+  const [activeTooltip, setActiveTooltip] = useState<{ id: string; x: number; y: number } | null>(null)
 
   // 在庫の配置済み合計（全スロット集計）
   function usedCount(id: string): number {
@@ -265,7 +295,7 @@ const [dragId, setDragId] = useState<string | null>(null)
       return sum
         + (s.slot1 === id ? 1 : 0)
         + (s.slot2 === id ? 1 : 0)
-        + (s.mondaySlot === id ? 1 : 0)
+        + (s.mondaySlot === id ? (id === "help-whistle" ? s.mondayWhistleCount : 1) : 0)
         + (s.campSlot === id ? 1 : 0)
         + (s.sableSlot === id ? 1 : 0)
     }, 0)
@@ -289,74 +319,98 @@ const [dragId, setDragId] = useState<string | null>(null)
   // D&D: スロットにドロップ
   function onDropSlot(dayIndex: number, slot: keyof DaySlots) {
     if (!dragId) return
+
+    // 同じスロットへのドロップは無視
+    if (dragSource && dragSource.dayIndex === dayIndex && dragSource.slot === slot) {
+      setDragId(null); setDragSource(null); setDragOverDay(null); return
+    }
+
     const slots = daySlots[dayIndex]
 
     // スロット種別ごとのバリデーション
     if (slot === "slot1" || slot === "slot2") {
-      if (!isIncenseItem(dragId)) return                         // おこう以外は拒否
+      if (!isIncenseItem(dragId)) return
       const other = slot === "slot1" ? slots.slot2 : slots.slot1
-      if (other === dragId) return                               // 同一おこう重複禁止
-      // ポケモンのおこう ↔ ラティアスのおこう は同時使用不可
+      if (other === dragId) return
       const POKEMON_LATIAS = new Set(["pokemon", "latias"])
       if (POKEMON_LATIAS.has(dragId) && other && POKEMON_LATIAS.has(other)) return
     }
-    if (slot === "mondaySlot") {
-      if (dragId !== "help-whistle") return                     // ホイッスルのみ
-    }
-    if (slot === "campSlot") {
-      if (dragId !== "good-camp") return                        // キャンプチケットのみ
-    }
-    if (slot === "sableSlot") {
-      if (dragId !== "master-sable") return                      // マスターサブレのみ
-    }
+    if (slot === "mondaySlot" && dragId !== "help-whistle") return
+    if (slot === "campSlot"   && dragId !== "good-camp")    return
+    if (slot === "sableSlot"  && dragId !== "master-sable") return
 
-    // 在庫チェック
-    if (usedCount(dragId) >= (inventory[dragId] ?? 0)) return
+    // 在庫チェック（スロットからの移動は使用数-1で判定）
+    const effectiveUsed = dragSource ? usedCount(dragId) - 1 : usedCount(dragId)
+    if (effectiveUsed >= (inventory[dragId] ?? 0)) return
 
-    setDaySlots(prev => ({
-      ...prev,
-      [dayIndex]: { ...prev[dayIndex], [slot]: dragId },
-    }))
+    setDaySlots(prev => {
+      let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: dragId } }
+      // 移動元スロットをクリア
+      if (dragSource) {
+        next = { ...next, [dragSource.dayIndex]: { ...next[dragSource.dayIndex], [dragSource.slot]: null } }
+      }
+      return next
+    })
     setDragId(null)
+    setDragSource(null)
     setDragOverDay(null)
   }
 
   function clearSlot(dayIndex: number, slot: keyof DaySlots) {
     setDaySlots(prev => ({
       ...prev,
-      [dayIndex]: { ...prev[dayIndex], [slot]: null },
+      [dayIndex]: {
+        ...prev[dayIndex],
+        [slot]: null,
+        ...(slot === "mondaySlot" ? { mondayWhistleCount: 1 } : {}),
+      },
     }))
+  }
+
+  function changeMondayWhistleCount(dayIndex: number, delta: number) {
+    setDaySlots(prev => {
+      const s = prev[dayIndex]
+      if (s.mondaySlot !== "help-whistle") return prev
+      const otherUsed = Object.entries(prev)
+        .filter(([di]) => Number(di) !== dayIndex)
+        .reduce((sum, [, ds]) => sum + (ds.mondaySlot === "help-whistle" ? ds.mondayWhistleCount : 0), 0)
+      const max = (inventory["help-whistle"] ?? 0) - otherUsed
+      const newCount = Math.max(1, Math.min(max, s.mondayWhistleCount + delta))
+      return { ...prev, [dayIndex]: { ...s, mondayWhistleCount: newCount } }
+    })
   }
 
   const week1 = EVENT_DAYS.slice(0, 7)
   const week2 = EVENT_DAYS.slice(7, 14)
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 text-gray-800 pb-6">
+      <div className="mx-auto" style={{ maxWidth: "calc(7 * 9rem + 2rem)" }}>
 
       {/* ── ヘッダー ── */}
-      <header className="relative overflow-hidden px-4 pt-6 pb-3 text-center">
-        <div className="absolute top-3 left-6 text-amber-400/50"><Star className="w-3 h-3 fill-current" /></div>
-        <div className="absolute top-5 right-10 text-amber-400/30"><Star className="w-2 h-2 fill-current" /></div>
-        <div className="absolute top-4 right-1/3 text-slate-500/40"><Moon className="w-4 h-4" /></div>
-        <h1 className="text-xl font-bold flex items-center justify-center gap-2 mb-1">
-          🔵 ラティアスリサーチ
-        </h1>
+      <header className="px-4 pt-4 pb-3 text-center">
+        <h1 className="text-lg font-bold text-gray-800 mb-0.5">ラティアスリサーチ スケジューラー</h1>
         <p className="text-xs text-gray-500">
           4/6(月) 〜 4/19(日)
-          <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full text-xs font-medium">
-            残り14日
-          </span>
+          <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full text-xs font-medium">残り14日</span>
         </p>
-        <p className="text-[10px] text-gray-400 mt-1">イベントバーをタップすると効果を確認できます</p>
       </header>
 
       {/* ── おこう在庫エリア ── */}
-      <section className="px-3 mb-3">
-        <p className="text-xs text-gray-500 mb-2">
-          <span className="font-medium text-gray-700">在庫を入力</span>
-          <span className="ml-2 text-gray-400">→ カレンダーのスロットにドラッグ&ドロップで配置</span>
-        </p>
+      <section className="px-4 mb-2">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-gray-500">
+            <span className="font-medium text-gray-700">在庫を入力</span>
+            <span className="ml-2 text-gray-400">→ カレンダーのスロットにドラッグ&ドロップで配置</span>
+          </p>
+          <button
+            onClick={() => setInventory(Object.fromEntries(INCENSE_MASTERS.map(i => [i.id, 0])))}
+            className="text-[10px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-2 py-0.5 transition-colors whitespace-nowrap"
+          >
+            在庫をリセット
+          </button>
+        </div>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {INCENSE_MASTERS.map(incense => {
             const qty = inventory[incense.id] ?? 0
@@ -375,7 +429,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                   img.height = 48
                   e.dataTransfer.setDragImage(img, 24, 24)
                 }}
-                onDragEnd={() => setDragId(null)}
+                onDragEnd={() => { setDragId(null); setDragSource(null) }}
                 className={cn(
                   "flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl border shrink-0 select-none transition-all w-18",
                   canDrag
@@ -401,12 +455,12 @@ const [dragId, setDragId] = useState<string | null>(null)
                   <button
                     className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-gray-700 text-[10px] leading-none"
                     onClick={() => changeQty(incense.id, -1)}
-                  >▼</button>
+                  >−</button>
                   <span className="text-sm font-bold tabular-nums text-gray-800 w-4 text-center">{qty}</span>
                   <button
                     className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-gray-700 text-[10px] leading-none"
                     onClick={() => changeQty(incense.id, 1)}
-                  >▲</button>
+                  >＋</button>
                 </div>
                 {used > 0 && (
                   <span className="text-[8px] text-blue-500">配置:{used}</span>
@@ -415,32 +469,34 @@ const [dragId, setDragId] = useState<string | null>(null)
               </div>
             )
           })}
-        </div>
+          </div>
       </section>
 
-      {/* ── 提案ボタン ── */}
-      <div className="px-3 mb-4 flex gap-2">
+      {/* ── ボタンエリア ── */}
+      <div className="px-4 mb-2 flex gap-2">
         <button
           onClick={handleSuggest}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-sm font-semibold shadow-lg shadow-blue-900/40 transition-all"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-linear-to-b from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md transition-colors whitespace-nowrap"
         >
-          <Sparkles className="w-4 h-4" />
-          効率的な使用プランを提案
+          <Sparkles className="w-4 h-4 shrink-0" />
+          <span className="text-xs font-semibold">おすすめ使用日提案</span>
         </button>
-        {isSuggested && (
-          <button
-            onClick={clearPlan}
-            className="px-3 py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300 text-xs text-gray-600 transition-all"
-          >
-            クリア
-          </button>
-        )}
+        <button
+          onClick={clearPlan}
+          className={cn(
+            "flex items-center px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-600 shadow-sm transition-colors whitespace-nowrap",
+            !isSuggested && "invisible pointer-events-none"
+          )}
+        >
+          <span className="text-xs font-semibold">クリア</span>
+        </button>
       </div>
 
       {/* ── カレンダーグリッド ── */}
-      <main className="px-2">
+      <main className="overflow-x-auto">
+        <div className="min-w-max">
         {/* 曜日ヘッダー */}
-        <div className="grid grid-cols-7 mb-1">
+        <div className="grid grid-cols-7 gap-1 mb-1" style={{ gridTemplateColumns: "repeat(7, 9rem)" }}>
           {["月", "火", "水", "木", "金", "土", "日"].map((d, i) => (
             <div key={d} className={cn(
               "text-center text-[10px] sm:text-xs font-bold py-1",
@@ -455,7 +511,7 @@ const [dragId, setDragId] = useState<string | null>(null)
 
         {/* Week 1（バーをオーバーレイ） */}
         <div className="relative mb-1">
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 9rem)" }}>
             {week1.map(day => (
               <DayCell
                 key={day.date}
@@ -467,15 +523,22 @@ const [dragId, setDragId] = useState<string | null>(null)
                 onDragLeave={() => setDragOverDay(null)}
                 onDropSlot={(slot) => onDropSlot(day.dayIndex, slot)}
                 onClearSlot={(slot) => clearSlot(day.dayIndex, slot)}
+                onDragFromSlot={(slot, itemId, e) => {
+                  setDragId(itemId)
+                  setDragSource({ dayIndex: day.dayIndex, slot })
+                  const img = new Image(); img.src = getIncenseById(itemId)?.imageUrl ?? ""
+                  e.dataTransfer.setDragImage(img, 20, 20)
+                }}
+                onWhistleCountChange={(delta) => changeMondayWhistleCount(day.dayIndex, delta)}
               />
             ))}
           </div>
-          <EventBarsOverlay week={0} activeEventId={activeEventId} onToggle={setActiveEventId} />
+          <EventBarsOverlay week={0} activeTooltipId={activeTooltip?.id ?? null} onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })} />
         </div>
 
         {/* Week 2（バーをオーバーレイ） */}
         <div className="relative">
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 9rem)" }}>
           {week2.map(day => (
             <DayCell
               key={day.date}
@@ -487,13 +550,67 @@ const [dragId, setDragId] = useState<string | null>(null)
               onDragLeave={() => setDragOverDay(null)}
               onDropSlot={(slot) => onDropSlot(day.dayIndex, slot)}
               onClearSlot={(slot) => clearSlot(day.dayIndex, slot)}
+              onDragFromSlot={(slot, itemId, e) => {
+                setDragId(itemId)
+                setDragSource({ dayIndex: day.dayIndex, slot })
+                const img = new Image(); img.src = getIncenseById(itemId)?.imageUrl ?? ""
+                e.dataTransfer.setDragImage(img, 20, 20)
+              }}
+              onWhistleCountChange={(delta) => changeMondayWhistleCount(day.dayIndex, delta)}
             />
           ))}
         </div>
-          <EventBarsOverlay week={1} activeEventId={activeEventId} onToggle={setActiveEventId} />
+          <EventBarsOverlay week={1} activeTooltipId={activeTooltip?.id ?? null} onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })} />
+        </div>
+
+        {/* ── メモエリア ── */}
+        <div className="mt-2 pb-6">
+          <p className="text-xs text-gray-500 mb-2"><span className="font-medium text-gray-700">メモ</span></p>
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="自由にメモできます"
+            className="w-full min-h-40 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-800 placeholder-gray-300 resize-y focus:outline-none focus:border-blue-400 leading-relaxed"
+          />
+        </div>
         </div>
       </main>
+
+      </div>
     </div>
+
+    {/* ── イベントツールチップ（portal） ── */}
+    {activeTooltip && typeof document !== "undefined" && createPortal(
+      <div
+        style={{ position: "fixed", left: activeTooltip.x, top: activeTooltip.y + 4, zIndex: 9999 }}
+        className="w-92 rounded-xl bg-white border border-gray-200 shadow-xl shadow-black/10 p-3"
+      >
+        {(() => {
+          const ev = CALENDAR_EVENTS.find(e => e.id === activeTooltip.id)
+          if (!ev) return null
+          return (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-gray-800">{ev.name}</span>
+                <button onClick={() => setActiveTooltip(null)} className="text-gray-400 hover:text-gray-700">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <ul className="space-y-1.5">
+                {ev.effects.map((ef, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-[10px] text-gray-700">
+                    <span className="shrink-0 text-gray-400 mt-px">▶</span>
+                    <span>{ef.label}{ef.note && <span className="ml-1 text-gray-400">({ef.note})</span>}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )
+        })()}
+      </div>,
+      document.body
+    )}
+    </>
   )
 }
 
@@ -508,42 +625,47 @@ interface DayCellProps {
   onDragLeave: () => void
   onDropSlot: (slot: keyof DaySlots) => void
   onClearSlot: (slot: keyof DaySlots) => void
+  onDragFromSlot: (slot: keyof DaySlots, itemId: string, e: React.DragEvent) => void
+  onWhistleCountChange: (delta: number) => void
 }
 
 /** 汎用アイテムスロット */
 function ItemSlot({
-  itemId, isOver, dragId, size = "md", label, bgImageUrls, monday = false, onDrop, onClear,
+  itemId, isOver, label, bgImageUrls, monday = false, onDrop, onClear, onDragFromSlot,
 }: {
   itemId: string | null
   isOver: boolean
-  dragId: string | null
-  size?: "md" | "sm"
   label?: string
-  /** 空スロット時に薄く表示する背景画像URL（複数可） */
   bgImageUrls?: string[]
-  /** 月曜専用スロットのスタイルを適用するか */
   monday?: boolean
   onDrop: () => void
   onClear: () => void
+  onDragFromSlot?: (e: React.DragEvent) => void
 }) {
+  const [localOver, setLocalOver] = useState(false)
   const item = itemId ? getIncenseById(itemId) : null
-  const dim = size === "sm" ? "w-17 h-17" : "w-24 h-24"
 
   return (
     <div
       className={cn(
-        "relative flex flex-col items-center justify-center rounded border transition-all shrink-0",
-        dim,
+        "relative flex flex-col items-center justify-center rounded border transition-all w-10 h-10 shrink-0",
         item
-          ? "bg-gray-100 border-gray-300"
-          : isOver
+          ? itemId === "latias"
+            ? "bg-purple-50 border-purple-300 shadow-[0_0_6px_1px_rgba(168,85,247,0.25)]"
+            : "bg-gray-100 border-gray-300"
+          : localOver
             ? "border-blue-400 bg-blue-50 border-dashed"
-            : monday
-              ? "border-amber-300 border-dashed bg-amber-50"
-              : "border-gray-300 border-dashed bg-gray-100",
+            : isOver
+              ? "border-blue-300 bg-blue-50/50 border-dashed"
+              : monday
+                ? "border-amber-300 border-dashed bg-amber-50"
+                : "border-gray-300 border-dashed bg-gray-100",
       )}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={onDrop}
+      onDragOver={(e) => { e.preventDefault(); setLocalOver(true) }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setLocalOver(false)
+      }}
+      onDrop={() => { setLocalOver(false); onDrop() }}
     >
       {/* 空スロット時の薄い背景画像（複数ある場合は左右に並べる） */}
       {!item && bgImageUrls && bgImageUrls.length > 0 && (
@@ -562,15 +684,20 @@ function ItemSlot({
 
       {item ? (
         <>
-          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain p-0.5" draggable={false} />
-          <button onClick={onClear} className="absolute -top-1 -right-1 z-20 w-3 h-3 rounded-full bg-white border border-gray-300 flex items-center justify-center text-gray-400 hover:text-red-500">
+          <img
+            src={item.imageUrl} alt={item.name}
+            className={cn("w-full h-full object-contain p-0.5", onDragFromSlot && "cursor-grab active:cursor-grabbing")}
+            draggable={!!onDragFromSlot}
+            onDragStart={onDragFromSlot}
+          />
+          <button onClick={onClear} className="absolute -top-2 -right-2 z-20 w-4 h-4 rounded-full bg-white border border-gray-300 flex items-center justify-center text-gray-400 hover:text-red-500 text-xs">
             <X className="w-1.5 h-1.5" />
           </button>
         </>
       ) : label ? (
-        <span className={cn("relative text-[7px] leading-tight text-center px-0.5", isOver ? "text-blue-500" : monday ? "text-amber-500" : "text-gray-400")}>{isOver ? "↓" : label}</span>
+        <span className={cn("relative text-[7px] leading-tight text-center px-0.5", localOver ? "text-blue-500" : monday ? "text-amber-500" : "text-gray-400")}>{localOver ? "↓" : label}</span>
       ) : (
-        <span className={cn("relative text-[8px]", isOver ? "text-blue-500" : "text-gray-400")}>{isOver ? "↓" : dragId ? "▾" : ""}</span>
+        <span className={cn("relative text-[8px]", localOver ? "text-blue-500" : "text-gray-400")}>{localOver ? "↓" : ""}</span>
       )}
     </div>
   )
@@ -579,7 +706,7 @@ function ItemSlot({
 function DayCell({
   day, slots, isDragOver, dragId,
   onDragOver, onDragLeave,
-  onDropSlot, onClearSlot,
+  onDropSlot, onClearSlot, onDragFromSlot, onWhistleCountChange,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -594,7 +721,6 @@ function DayCell({
     <div
       className={cn(
         "relative flex flex-col rounded-lg border p-1 transition-all duration-150",
-        "min-h-24 sm:min-h-28",
         day.isToday && "border-blue-500 bg-blue-50",
         !day.isToday && isSat && "border-sky-300 bg-sky-50",
         !day.isToday && isSun && "border-rose-300 bg-rose-50",
@@ -615,34 +741,29 @@ function DayCell({
       {/* イベントバー用の予約スペース（EventBarsOverlay がここに重なる） */}
       <div className="h-14 shrink-0" />
 
-      {/* スロット列 + メモ（横並び） */}
-      <div className="flex gap-1 flex-1">
-        {/* 左: スロット縦積み */}
-        <div className="flex flex-col gap-0.5 shrink-0">
+      {/* スロット */}
+      <div className="flex flex-col gap-0.5">
           {/* おこうスロット */}
           <div className="flex gap-0.5">
             <ItemSlot
               itemId={slots.slot1} isOver={isDragOver && dragIsIncense && !slots.slot1}
-              dragId={dragIsIncense ? dragId : null}
-              size="sm"
               bgImageUrls={["/img/okou_normal.png"]}
               onDrop={() => onDropSlot("slot1")} onClear={() => onClearSlot("slot1")}
+              onDragFromSlot={slots.slot1 ? (e) => onDragFromSlot("slot1", slots.slot1!, e) : undefined}
             />
             <ItemSlot
               itemId={slots.slot2} isOver={isDragOver && dragIsIncense && !!slots.slot1 && !slots.slot2}
-              dragId={dragIsIncense ? dragId : null}
-              size="sm"
               bgImageUrls={["/img/okou_normal.png"]}
               onDrop={() => onDropSlot("slot2")} onClear={() => onClearSlot("slot2")}
+              onDragFromSlot={slots.slot2 ? (e) => onDragFromSlot("slot2", slots.slot2!, e) : undefined}
             />
             {/* マスターサブレスロット（ラティアス配置時のみ） */}
             {hasLatias && (
               <ItemSlot
                 itemId={slots.sableSlot} isOver={isDragOver && dragIsSable && !slots.sableSlot}
-                dragId={dragIsSable ? dragId : null}
-                size="sm" label="サブレ"
                 bgImageUrls={[getIncenseById("master-sable")?.imageUrl ?? ""]}
                 onDrop={() => onDropSlot("sableSlot")} onClear={() => onClearSlot("sableSlot")}
+                onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
               />
             )}
           </div>
@@ -650,26 +771,33 @@ function DayCell({
           {/* 月曜専用スロット */}
           {isMonday && (
             <div className="flex gap-0.5">
-              <ItemSlot
-                itemId={slots.mondaySlot}
-                isOver={isDragOver && dragId === "help-whistle" && !slots.mondaySlot}
-                dragId={dragId === "help-whistle" ? dragId : null}
-                size="sm" monday
-                bgImageUrls={[getIncenseById("help-whistle")?.imageUrl ?? ""]}
-                onDrop={() => onDropSlot("mondaySlot")} onClear={() => onClearSlot("mondaySlot")}
-              />
+              <div className="flex flex-col items-center gap-0.5">
+                <ItemSlot
+                  itemId={slots.mondaySlot}
+                  isOver={isDragOver && dragId === "help-whistle" && !slots.mondaySlot}
+                  monday
+                  bgImageUrls={[getIncenseById("help-whistle")?.imageUrl ?? ""]}
+                  onDrop={() => onDropSlot("mondaySlot")} onClear={() => onClearSlot("mondaySlot")}
+                  onDragFromSlot={slots.mondaySlot ? (e) => onDragFromSlot("mondaySlot", slots.mondaySlot!, e) : undefined}
+                />
+                {slots.mondaySlot === "help-whistle" && (
+                  <div className="flex items-center gap-0.5">
+                    <button onClick={() => onWhistleCountChange(-1)} className="w-3 h-3 flex items-center justify-center text-gray-300 hover:text-black text-[9px] leading-none">−</button>
+                    <span className="text-[9px] font-bold w-3 text-center text-black">{slots.mondayWhistleCount}</span>
+                    <button onClick={() => onWhistleCountChange(1)} className="w-3 h-3 flex items-center justify-center text-gray-300 hover:text-black text-[9px] leading-none">＋</button>
+                  </div>
+                )}
+              </div>
               <ItemSlot
                 itemId={slots.campSlot}
                 isOver={isDragOver && dragId === "good-camp" && !slots.campSlot}
-                dragId={dragId === "good-camp" ? dragId : null}
-                size="sm" monday
+                monday
                 bgImageUrls={[getIncenseById("good-camp")?.imageUrl ?? ""]}
                 onDrop={() => onDropSlot("campSlot")} onClear={() => onClearSlot("campSlot")}
+                onDragFromSlot={slots.campSlot ? (e) => onDragFromSlot("campSlot", slots.campSlot!, e) : undefined}
               />
             </div>
           )}
-        </div>
-
       </div>
     </div>
   )
@@ -679,70 +807,45 @@ function DayCell({
 
 function EventBarsOverlay({
   week,
-  activeEventId,
-  onToggle,
+  activeTooltipId,
+  onBarClick,
 }: {
   week: number
-  activeEventId: string | null
-  onToggle: (id: string | null) => void
+  activeTooltipId: string | null
+  onBarClick: (id: string, x: number, y: number) => void
 }) {
   const events = CALENDAR_EVENTS.filter(e => e.week === week)
   if (events.length === 0) return null
 
   return (
-    // pointer-events-none で下のセルの操作を妨げない
     <div className="absolute inset-0 pointer-events-none z-10">
       {events.map((ev, idx) => (
-        // 各バーを top から積み重ねる（1本 = 20px）
         <div
           key={ev.id}
-          className="absolute inset-x-0 grid grid-cols-7 gap-1 pointer-events-none"
-          style={{ top: `${24 + idx * 22}px` }}
+          className="absolute inset-x-0 grid gap-1 pointer-events-none"
+          style={{ top: `${24 + idx * 22}px`, gridTemplateColumns: "repeat(7, 9rem)" }}
         >
-          {/* colStart 前のスペーサー */}
           {ev.colStart > 1 && (
             <div style={{ gridColumn: `span ${ev.colStart - 1}` }} />
           )}
-
-          {/* バー本体 */}
           <div
             style={{ gridColumn: `span ${ev.colSpan}` }}
-            className="relative pointer-events-auto"
+            className="pointer-events-auto"
           >
             <button
-              onClick={() => onToggle(activeEventId === ev.id ? null : ev.id)}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                onBarClick(ev.id, rect.left, rect.bottom)
+              }}
               className={cn(
-                "w-full h-5 px-1.5 rounded text-[8px] font-semibold truncate transition-all text-left leading-5",
+                "w-full h-5 px-1.5 rounded text-[8px] font-semibold transition-all text-left leading-5 flex items-center gap-1",
                 ev.barColor, ev.textColor,
+                activeTooltipId === ev.id && "ring-1 ring-white/50",
               )}
             >
-              {ev.name}
+              <span className="shrink-0 opacity-70 text-[9px]">ⓘ</span>
+              <span className="truncate">{ev.name}</span>
             </button>
-
-            {/* ツールチップ */}
-            {activeEventId === ev.id && (
-              <div className="absolute top-full left-0 z-50 mt-1 w-52 rounded-xl bg-white border border-gray-200 shadow-xl shadow-black/10 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-800">{ev.name}</span>
-                  <button onClick={() => onToggle(null)} className="text-gray-400 hover:text-gray-700">
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-                <ul className="space-y-1.5">
-                  {ev.effects.map((ef, i) => (
-                    <li key={i} className="flex items-start gap-1.5">
-                      <span className="text-sm leading-none mt-0.5">{ef.icon}</span>
-                      <div>
-                        <span className="text-[10px] text-gray-700 font-medium">{ef.label}</span>
-                        {ef.note && (
-                          <span className="ml-1 text-[9px] text-gray-400">({ef.note})</span>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         </div>
       ))}
