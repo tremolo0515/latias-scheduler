@@ -495,7 +495,7 @@ const [dragId, setDragId] = useState<string | null>(null)
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs text-gray-500">
             <span className="font-medium text-gray-700">在庫を入力</span>
-            <span className="ml-2 text-gray-400">→ カレンダーのスロットにドラッグ&ドロップで配置</span>
+            <span className="ml-2 text-gray-400">→ 提案ボタンで配置 → タップでカスタマイズ</span>
           </p>
           <button
             onClick={() => setInventory(Object.fromEntries(INCENSE_MASTERS.map(i => [i.id, 0])))}
@@ -926,19 +926,17 @@ function DayCell({
                   onDrop={() => onDropSlot("mondaySlot")} onTap={() => onTapSlot("mondaySlot")} onTapItem={slots.mondaySlot ? () => onTapFromSlot("mondaySlot", slots.mondaySlot!) : undefined} onClear={() => onClearSlot("mondaySlot")}
                   onDragFromSlot={slots.mondaySlot ? (e) => onDragFromSlot("mondaySlot", slots.mondaySlot!, e) : undefined}
                 />
-                {slots.mondaySlot === "help-whistle" && (
-                  <select
-                    value={slots.mondayWhistleCount}
-                    onChange={(e) => onWhistleCountChange(Number(e.target.value))}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-10 text-[9px] font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded py-0.5 focus:outline-none focus:border-blue-400"
-                    style={{ textAlignLast: "center" }}
-                  >
-                    {Array.from({ length: whistleMax }, (_, i) => (
-                      <option key={i + 1} value={i + 1}>{i + 1}</option>
-                    ))}
-                  </select>
-                )}
+                <select
+                  value={slots.mondayWhistleCount}
+                  onChange={(e) => onWhistleCountChange(Number(e.target.value))}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn("w-10 text-[9px] font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded py-0.5 focus:outline-none focus:border-blue-400", slots.mondaySlot !== "help-whistle" && "invisible")}
+                  style={{ textAlignLast: "center" }}
+                >
+                  {Array.from({ length: whistleMax }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>{i + 1}</option>
+                  ))}
+                </select>
               </div>
               <ItemSlot
                 itemId={slots.campSlot}
