@@ -555,6 +555,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                   onChange={(e) => setInventory(prev => ({ ...prev, [incense.id]: Number(e.target.value) }))}
                   onClick={(e) => e.stopPropagation()}
                   className="w-full text-xs font-bold text-center text-gray-800 bg-gray-50 border border-gray-200 rounded py-0.5 focus:outline-none focus:border-blue-400"
+                  style={{ textAlignLast: "center" }}
                 >
                   {Array.from({ length: (incense.id === "good-camp" ? 2 : 99) + 1 }, (_, i) => (
                     <option key={i} value={i}>{i}</option>
