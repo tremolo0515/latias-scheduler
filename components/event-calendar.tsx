@@ -401,6 +401,7 @@ const [dragId, setDragId] = useState<string | null>(null)
       // ターゲット日の制約チェック（idを置いた後のもう一方のスロット）
       if (slot === "slot1" || slot === "slot2") {
         const otherOnTarget = slot === "slot1" ? slots.slot2 : slots.slot1
+        if (otherOnTarget && otherOnTarget === id) return // 同じおこう重複
         if (POKEMON_LATIAS.has(id) && otherOnTarget && POKEMON_LATIAS.has(otherOnTarget)) return
       }
       // 移動元日の制約チェック（targetItemを置いた後のもう一方のスロット）
@@ -409,6 +410,7 @@ const [dragId, setDragId] = useState<string | null>(null)
         const otherOnSource = tapSource.slot === "slot1" ? sourceSlots.slot2 : sourceSlots.slot1
         // 移動元のもう一方は id が抜けた後なので元のままで比較
         const effectiveOther = otherOnSource === id ? null : otherOnSource
+        if (effectiveOther && effectiveOther === targetItem) return // 同じおこう重複
         if (POKEMON_LATIAS.has(targetItem) && effectiveOther && POKEMON_LATIAS.has(effectiveOther)) return
       }
       setDaySlots(prev => ({
