@@ -289,6 +289,7 @@ const [dragId, setDragId] = useState<string | null>(null)
   const [isSuggested, setIsSuggested] = useState(false)
   const [activeTooltip, setActiveTooltip] = useState<{ id: string; x: number; y: number } | null>(null)
   const [tapSelectedId, setTapSelectedId] = useState<string | null>(null)
+  const [tapSource, setTapSource] = useState<{ dayIndex: number; slot: keyof DaySlots } | null>(null)
 
   // ピンチズーム
   const [calScale, setCalScale] = useState(1)
@@ -387,6 +388,11 @@ const [dragId, setDragId] = useState<string | null>(null)
     const id = tapSelectedId
     const slots = daySlots[dayIndex]
 
+    // 同じスロットをタップしたらキャンセル
+    if (tapSource && tapSource.dayIndex === dayIndex && tapSource.slot === slot) {
+      setTapSelectedId(null); setTapSource(null); return
+    }
+
     if (slot === "slot1" || slot === "slot2") {
       if (!isIncenseItem(id)) return
       const other = slot === "slot1" ? slots.slot2 : slots.slot1
@@ -398,10 +404,23 @@ const [dragId, setDragId] = useState<string | null>(null)
     if (slot === "campSlot"   && id !== "good-camp")    return
     if (slot === "sableSlot"  && id !== "master-sable") return
 
-    if (usedCount(id) >= (inventory[id] ?? 0)) return
+    const effectiveUsed = tapSource ? usedCount(id) - 1 : usedCount(id)
+    if (effectiveUsed >= (inventory[id] ?? 0)) return
 
-    setDaySlots(prev => ({ ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: id } }))
+    setDaySlots(prev => {
+      let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: id } }
+      if (tapSource) {
+        next = { ...next, [tapSource.dayIndex]: { ...next[tapSource.dayIndex], [tapSource.slot]: null } }
+      }
+      return next
+    })
     setTapSelectedId(null)
+    setTapSource(null)
+  }
+
+  function onTapFromSlot(dayIndex: number, slot: keyof DaySlots, itemId: string) {
+    setTapSelectedId(itemId)
+    setTapSource({ dayIndex, slot })
   }
 
   function clearSlot(dayIndex: number, slot: keyof DaySlots) {
@@ -434,7 +453,7 @@ const [dragId, setDragId] = useState<string | null>(null)
   return (
     <>
     <div className="min-h-screen bg-gray-50 text-gray-800 pb-6" onClick={(e) => {
-      if (tapSelectedId && !(e.target as HTMLElement).closest("[data-tap-item]")) setTapSelectedId(null)
+      if (tapSelectedId && !(e.target as HTMLElement).closest("[data-tap-item]")) { setTapSelectedId(null); setTapSource(null) }
     }}>
       <div className="mx-auto" style={{ maxWidth: "calc(7 * 9rem + 2rem)" }}>
 
@@ -596,6 +615,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                   const img = new Image(); img.src = getIncenseById(itemId)?.imageUrl ?? ""
                   e.dataTransfer.setDragImage(img, 20, 20)
                 }}
+                onTapFromSlot={(slot, itemId) => onTapFromSlot(day.dayIndex, slot, itemId)}
                 onWhistleCountChange={(delta) => changeMondayWhistleCount(day.dayIndex, delta)}
               />
             ))}
@@ -695,6 +715,7 @@ interface DayCellProps {
   onDragLeave: () => void
   onDropSlot: (slot: keyof DaySlots) => void
   onTapSlot: (slot: keyof DaySlots) => void
+  onTapFromSlot: (slot: keyof DaySlots, itemId: string) => void
   onClearSlot: (slot: keyof DaySlots) => void
   onDragFromSlot: (slot: keyof DaySlots, itemId: string, e: React.DragEvent) => void
   onWhistleCountChange: (delta: number) => void
@@ -702,16 +723,18 @@ interface DayCellProps {
 
 /** 汎用アイテムスロット */
 function ItemSlot({
-  itemId, isOver, isTapTarget, label, bgImageUrls, monday = false, onDrop, onTap, onClear, onDragFromSlot,
+  itemId, isOver, isTapTarget, isTapSelected, label, bgImageUrls, monday = false, onDrop, onTap, onTapItem, onClear, onDragFromSlot,
 }: {
   itemId: string | null
   isOver: boolean
   isTapTarget?: boolean
+  isTapSelected?: boolean
   label?: string
   bgImageUrls?: string[]
   monday?: boolean
   onDrop: () => void
   onTap: () => void
+  onTapItem?: () => void
   onClear: () => void
   onDragFromSlot?: (e: React.DragEvent) => void
 }) {
@@ -723,9 +746,11 @@ function ItemSlot({
       className={cn(
         "relative flex flex-col items-center justify-center rounded border transition-all w-10 h-10 shrink-0",
         item
-          ? itemId === "latias"
-            ? "bg-purple-50 border-purple-300 shadow-[0_0_6px_1px_rgba(168,85,247,0.25)]"
-            : "bg-gray-100 border-gray-300"
+          ? isTapSelected
+            ? "bg-blue-100 border-blue-400 ring-2 ring-blue-300"
+            : itemId === "latias"
+              ? "bg-purple-50 border-purple-300 shadow-[0_0_6px_1px_rgba(168,85,247,0.25)]"
+              : "bg-gray-100 border-gray-300"
           : localOver || isTapTarget
             ? "border-blue-400 bg-blue-50 border-dashed"
             : isOver
@@ -739,7 +764,7 @@ function ItemSlot({
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setLocalOver(false)
       }}
       onDrop={() => { setLocalOver(false); onDrop() }}
-      onClick={() => { if (!item) onTap() }}
+      onClick={() => { if (item) onTapItem?.(); else onTap() }}
     >
       {/* 空スロット時の薄い背景画像（複数ある場合は左右に並べる） */}
       {!item && bgImageUrls && bgImageUrls.length > 0 && (
@@ -780,7 +805,7 @@ function ItemSlot({
 function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
-  onDropSlot, onTapSlot, onClearSlot, onDragFromSlot, onWhistleCountChange,
+  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -822,15 +847,17 @@ function DayCell({
             <ItemSlot
               itemId={slots.slot1} isOver={isDragOver && dragIsIncense && !slots.slot1}
               isTapTarget={!!tapSelectedId && !slots.slot1}
+              isTapSelected={tapSelectedId === slots.slot1 && !!slots.slot1}
               bgImageUrls={["/img/okou_normal.png"]}
-              onDrop={() => onDropSlot("slot1")} onTap={() => onTapSlot("slot1")} onClear={() => onClearSlot("slot1")}
+              onDrop={() => onDropSlot("slot1")} onTap={() => onTapSlot("slot1")} onTapItem={slots.slot1 ? () => onTapFromSlot("slot1", slots.slot1!) : undefined} onClear={() => onClearSlot("slot1")}
               onDragFromSlot={slots.slot1 ? (e) => onDragFromSlot("slot1", slots.slot1!, e) : undefined}
             />
             <ItemSlot
               itemId={slots.slot2} isOver={isDragOver && dragIsIncense && !!slots.slot1 && !slots.slot2}
               isTapTarget={!!tapSelectedId && !!slots.slot1 && !slots.slot2}
+              isTapSelected={tapSelectedId === slots.slot2 && !!slots.slot2}
               bgImageUrls={["/img/okou_normal.png"]}
-              onDrop={() => onDropSlot("slot2")} onTap={() => onTapSlot("slot2")} onClear={() => onClearSlot("slot2")}
+              onDrop={() => onDropSlot("slot2")} onTap={() => onTapSlot("slot2")} onTapItem={slots.slot2 ? () => onTapFromSlot("slot2", slots.slot2!) : undefined} onClear={() => onClearSlot("slot2")}
               onDragFromSlot={slots.slot2 ? (e) => onDragFromSlot("slot2", slots.slot2!, e) : undefined}
             />
             {/* マスターサブレスロット（ラティアス配置時のみ） */}
@@ -838,8 +865,9 @@ function DayCell({
               <ItemSlot
                 itemId={slots.sableSlot} isOver={isDragOver && dragIsSable && !slots.sableSlot}
                 isTapTarget={tapSelectedId === "master-sable" && !slots.sableSlot}
+                isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
                 bgImageUrls={[getIncenseById("master-sable")?.imageUrl ?? ""]}
-                onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onClear={() => onClearSlot("sableSlot")}
+                onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined} onClear={() => onClearSlot("sableSlot")}
                 onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
               />
             )}
@@ -853,9 +881,10 @@ function DayCell({
                   itemId={slots.mondaySlot}
                   isOver={isDragOver && dragId === "help-whistle" && !slots.mondaySlot}
                   isTapTarget={tapSelectedId === "help-whistle" && !slots.mondaySlot}
+                  isTapSelected={tapSelectedId === slots.mondaySlot && !!slots.mondaySlot}
                   monday
                   bgImageUrls={[getIncenseById("help-whistle")?.imageUrl ?? ""]}
-                  onDrop={() => onDropSlot("mondaySlot")} onTap={() => onTapSlot("mondaySlot")} onClear={() => onClearSlot("mondaySlot")}
+                  onDrop={() => onDropSlot("mondaySlot")} onTap={() => onTapSlot("mondaySlot")} onTapItem={slots.mondaySlot ? () => onTapFromSlot("mondaySlot", slots.mondaySlot!) : undefined} onClear={() => onClearSlot("mondaySlot")}
                   onDragFromSlot={slots.mondaySlot ? (e) => onDragFromSlot("mondaySlot", slots.mondaySlot!, e) : undefined}
                 />
                 {slots.mondaySlot === "help-whistle" && (
@@ -870,9 +899,10 @@ function DayCell({
                 itemId={slots.campSlot}
                 isOver={isDragOver && dragId === "good-camp" && !slots.campSlot}
                 isTapTarget={tapSelectedId === "good-camp" && !slots.campSlot}
+                isTapSelected={tapSelectedId === slots.campSlot && !!slots.campSlot}
                 monday
                 bgImageUrls={[getIncenseById("good-camp")?.imageUrl ?? ""]}
-                onDrop={() => onDropSlot("campSlot")} onTap={() => onTapSlot("campSlot")} onClear={() => onClearSlot("campSlot")}
+                onDrop={() => onDropSlot("campSlot")} onTap={() => onTapSlot("campSlot")} onTapItem={slots.campSlot ? () => onTapFromSlot("campSlot", slots.campSlot!) : undefined} onClear={() => onClearSlot("campSlot")}
                 onDragFromSlot={slots.campSlot ? (e) => onDragFromSlot("campSlot", slots.campSlot!, e) : undefined}
               />
             </div>
