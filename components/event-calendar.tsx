@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Sparkles, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -289,6 +289,30 @@ const [dragId, setDragId] = useState<string | null>(null)
   const [isSuggested, setIsSuggested] = useState(false)
   const [activeTooltip, setActiveTooltip] = useState<{ id: string; x: number; y: number } | null>(null)
 
+  // ピンチズーム
+  const [calScale, setCalScale] = useState(1)
+  const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null)
+  const calRef = useRef<HTMLDivElement>(null)
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      pinchRef.current = { startDist: Math.hypot(dx, dy), startScale: calScale }
+    }
+  }
+  function handleTouchMove(e: React.TouchEvent) {
+    if (e.touches.length !== 2 || !pinchRef.current) return
+    const dx = e.touches[0].clientX - e.touches[1].clientX
+    const dy = e.touches[0].clientY - e.touches[1].clientY
+    const dist = Math.hypot(dx, dy)
+    const next = Math.min(2.5, Math.max(0.4, pinchRef.current.startScale * (dist / pinchRef.current.startDist)))
+    setCalScale(next)
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (e.touches.length < 2) pinchRef.current = null
+  }
+
   // 在庫の配置済み合計（全スロット集計）
   function usedCount(id: string): number {
     return Object.values(daySlots).reduce((sum, s) => {
@@ -493,8 +517,17 @@ const [dragId, setDragId] = useState<string | null>(null)
       </div>
 
       {/* ── カレンダーグリッド ── */}
-      <main className="overflow-x-auto">
-        <div className="min-w-max">
+      <main
+        className="overflow-x-auto"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div
+          ref={calRef}
+          className="min-w-max origin-top-left"
+          style={{ transform: `scale(${calScale})`, transformOrigin: "top left" }}
+        >
         {/* 曜日ヘッダー */}
         <div className="grid grid-cols-7 gap-1 mb-1" style={{ gridTemplateColumns: "repeat(7, 9rem)" }}>
           {["月", "火", "水", "木", "金", "土", "日"].map((d, i) => (
