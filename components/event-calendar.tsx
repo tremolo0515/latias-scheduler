@@ -288,6 +288,7 @@ const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverDay, setDragOverDay] = useState<number | null>(null)
   const [isSuggested, setIsSuggested] = useState(false)
   const [activeTooltip, setActiveTooltip] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [tapSelectedId, setTapSelectedId] = useState<string | null>(null)
 
   // ピンチズーム
   const [calScale, setCalScale] = useState(1)
@@ -380,6 +381,29 @@ const [dragId, setDragId] = useState<string | null>(null)
     setDragOverDay(null)
   }
 
+  // タップ選択 → スロットにタップで配置
+  function onTapSlot(dayIndex: number, slot: keyof DaySlots) {
+    if (!tapSelectedId) return
+    const id = tapSelectedId
+    const slots = daySlots[dayIndex]
+
+    if (slot === "slot1" || slot === "slot2") {
+      if (!isIncenseItem(id)) return
+      const other = slot === "slot1" ? slots.slot2 : slots.slot1
+      if (other === id) return
+      const POKEMON_LATIAS = new Set(["pokemon", "latias"])
+      if (POKEMON_LATIAS.has(id) && other && POKEMON_LATIAS.has(other)) return
+    }
+    if (slot === "mondaySlot" && id !== "help-whistle") return
+    if (slot === "campSlot"   && id !== "good-camp")    return
+    if (slot === "sableSlot"  && id !== "master-sable") return
+
+    if (usedCount(id) >= (inventory[id] ?? 0)) return
+
+    setDaySlots(prev => ({ ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: id } }))
+    setTapSelectedId(null)
+  }
+
   function clearSlot(dayIndex: number, slot: keyof DaySlots) {
     setDaySlots(prev => ({
       ...prev,
@@ -409,7 +433,9 @@ const [dragId, setDragId] = useState<string | null>(null)
 
   return (
     <>
-    <div className="min-h-screen bg-gray-50 text-gray-800 pb-6">
+    <div className="min-h-screen bg-gray-50 text-gray-800 pb-6" onClick={(e) => {
+      if (tapSelectedId && !(e.target as HTMLElement).closest("[data-tap-item]")) setTapSelectedId(null)
+    }}>
       <div className="mx-auto" style={{ maxWidth: "calc(7 * 9rem + 2rem)" }}>
 
       {/* ── ヘッダー ── */}
@@ -454,12 +480,18 @@ const [dragId, setDragId] = useState<string | null>(null)
                   e.dataTransfer.setDragImage(img, 24, 24)
                 }}
                 onDragEnd={() => { setDragId(null); setDragSource(null) }}
+                data-tap-item
+                onClick={() => {
+                  if (!canDrag) return
+                  setTapSelectedId(prev => prev === incense.id ? null : incense.id)
+                }}
                 className={cn(
                   "flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl border shrink-0 select-none transition-all w-18",
                   canDrag
                     ? "bg-white border-gray-300 cursor-grab active:cursor-grabbing hover:border-blue-400 shadow-sm"
                     : "bg-gray-50 border-gray-200 opacity-50 cursor-default",
-                  dragId === incense.id && "border-blue-400 scale-95 opacity-80"
+                  dragId === incense.id && "border-blue-400 scale-95 opacity-80",
+                  tapSelectedId === incense.id && "border-blue-500 ring-2 ring-blue-300 scale-95"
                 )}
               >
                 {/* アイテム画像 */}
@@ -552,9 +584,11 @@ const [dragId, setDragId] = useState<string | null>(null)
                 slots={daySlots[day.dayIndex]}
                 isDragOver={dragOverDay === day.dayIndex}
                 dragId={dragId}
+                tapSelectedId={tapSelectedId}
                 onDragOver={(e) => { e.preventDefault(); setDragOverDay(day.dayIndex) }}
                 onDragLeave={() => setDragOverDay(null)}
                 onDropSlot={(slot) => onDropSlot(day.dayIndex, slot)}
+                onTapSlot={(slot) => onTapSlot(day.dayIndex, slot)}
                 onClearSlot={(slot) => clearSlot(day.dayIndex, slot)}
                 onDragFromSlot={(slot, itemId, e) => {
                   setDragId(itemId)
@@ -579,9 +613,11 @@ const [dragId, setDragId] = useState<string | null>(null)
               slots={daySlots[day.dayIndex]}
               isDragOver={dragOverDay === day.dayIndex}
               dragId={dragId}
+              tapSelectedId={tapSelectedId}
               onDragOver={(e) => { e.preventDefault(); setDragOverDay(day.dayIndex) }}
               onDragLeave={() => setDragOverDay(null)}
               onDropSlot={(slot) => onDropSlot(day.dayIndex, slot)}
+              onTapSlot={(slot) => onTapSlot(day.dayIndex, slot)}
               onClearSlot={(slot) => clearSlot(day.dayIndex, slot)}
               onDragFromSlot={(slot, itemId, e) => {
                 setDragId(itemId)
@@ -654,9 +690,11 @@ interface DayCellProps {
   slots: DaySlots
   isDragOver: boolean
   dragId: string | null
+  tapSelectedId: string | null
   onDragOver: (e: React.DragEvent) => void
   onDragLeave: () => void
   onDropSlot: (slot: keyof DaySlots) => void
+  onTapSlot: (slot: keyof DaySlots) => void
   onClearSlot: (slot: keyof DaySlots) => void
   onDragFromSlot: (slot: keyof DaySlots, itemId: string, e: React.DragEvent) => void
   onWhistleCountChange: (delta: number) => void
@@ -664,14 +702,16 @@ interface DayCellProps {
 
 /** 汎用アイテムスロット */
 function ItemSlot({
-  itemId, isOver, label, bgImageUrls, monday = false, onDrop, onClear, onDragFromSlot,
+  itemId, isOver, isTapTarget, label, bgImageUrls, monday = false, onDrop, onTap, onClear, onDragFromSlot,
 }: {
   itemId: string | null
   isOver: boolean
+  isTapTarget?: boolean
   label?: string
   bgImageUrls?: string[]
   monday?: boolean
   onDrop: () => void
+  onTap: () => void
   onClear: () => void
   onDragFromSlot?: (e: React.DragEvent) => void
 }) {
@@ -686,7 +726,7 @@ function ItemSlot({
           ? itemId === "latias"
             ? "bg-purple-50 border-purple-300 shadow-[0_0_6px_1px_rgba(168,85,247,0.25)]"
             : "bg-gray-100 border-gray-300"
-          : localOver
+          : localOver || isTapTarget
             ? "border-blue-400 bg-blue-50 border-dashed"
             : isOver
               ? "border-blue-300 bg-blue-50/50 border-dashed"
@@ -699,6 +739,7 @@ function ItemSlot({
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setLocalOver(false)
       }}
       onDrop={() => { setLocalOver(false); onDrop() }}
+      onClick={() => { if (!item) onTap() }}
     >
       {/* 空スロット時の薄い背景画像（複数ある場合は左右に並べる） */}
       {!item && bgImageUrls && bgImageUrls.length > 0 && (
@@ -737,9 +778,9 @@ function ItemSlot({
 }
 
 function DayCell({
-  day, slots, isDragOver, dragId,
+  day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
-  onDropSlot, onClearSlot, onDragFromSlot, onWhistleCountChange,
+  onDropSlot, onTapSlot, onClearSlot, onDragFromSlot, onWhistleCountChange,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -780,22 +821,25 @@ function DayCell({
           <div className="flex gap-0.5">
             <ItemSlot
               itemId={slots.slot1} isOver={isDragOver && dragIsIncense && !slots.slot1}
+              isTapTarget={!!tapSelectedId && !slots.slot1}
               bgImageUrls={["/img/okou_normal.png"]}
-              onDrop={() => onDropSlot("slot1")} onClear={() => onClearSlot("slot1")}
+              onDrop={() => onDropSlot("slot1")} onTap={() => onTapSlot("slot1")} onClear={() => onClearSlot("slot1")}
               onDragFromSlot={slots.slot1 ? (e) => onDragFromSlot("slot1", slots.slot1!, e) : undefined}
             />
             <ItemSlot
               itemId={slots.slot2} isOver={isDragOver && dragIsIncense && !!slots.slot1 && !slots.slot2}
+              isTapTarget={!!tapSelectedId && !!slots.slot1 && !slots.slot2}
               bgImageUrls={["/img/okou_normal.png"]}
-              onDrop={() => onDropSlot("slot2")} onClear={() => onClearSlot("slot2")}
+              onDrop={() => onDropSlot("slot2")} onTap={() => onTapSlot("slot2")} onClear={() => onClearSlot("slot2")}
               onDragFromSlot={slots.slot2 ? (e) => onDragFromSlot("slot2", slots.slot2!, e) : undefined}
             />
             {/* マスターサブレスロット（ラティアス配置時のみ） */}
             {hasLatias && (
               <ItemSlot
                 itemId={slots.sableSlot} isOver={isDragOver && dragIsSable && !slots.sableSlot}
+                isTapTarget={tapSelectedId === "master-sable" && !slots.sableSlot}
                 bgImageUrls={[getIncenseById("master-sable")?.imageUrl ?? ""]}
-                onDrop={() => onDropSlot("sableSlot")} onClear={() => onClearSlot("sableSlot")}
+                onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onClear={() => onClearSlot("sableSlot")}
                 onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
               />
             )}
@@ -808,9 +852,10 @@ function DayCell({
                 <ItemSlot
                   itemId={slots.mondaySlot}
                   isOver={isDragOver && dragId === "help-whistle" && !slots.mondaySlot}
+                  isTapTarget={tapSelectedId === "help-whistle" && !slots.mondaySlot}
                   monday
                   bgImageUrls={[getIncenseById("help-whistle")?.imageUrl ?? ""]}
-                  onDrop={() => onDropSlot("mondaySlot")} onClear={() => onClearSlot("mondaySlot")}
+                  onDrop={() => onDropSlot("mondaySlot")} onTap={() => onTapSlot("mondaySlot")} onClear={() => onClearSlot("mondaySlot")}
                   onDragFromSlot={slots.mondaySlot ? (e) => onDragFromSlot("mondaySlot", slots.mondaySlot!, e) : undefined}
                 />
                 {slots.mondaySlot === "help-whistle" && (
@@ -824,9 +869,10 @@ function DayCell({
               <ItemSlot
                 itemId={slots.campSlot}
                 isOver={isDragOver && dragId === "good-camp" && !slots.campSlot}
+                isTapTarget={tapSelectedId === "good-camp" && !slots.campSlot}
                 monday
                 bgImageUrls={[getIncenseById("good-camp")?.imageUrl ?? ""]}
-                onDrop={() => onDropSlot("campSlot")} onClear={() => onClearSlot("campSlot")}
+                onDrop={() => onDropSlot("campSlot")} onTap={() => onTapSlot("campSlot")} onClear={() => onClearSlot("campSlot")}
                 onDragFromSlot={slots.campSlot ? (e) => onDragFromSlot("campSlot", slots.campSlot!, e) : undefined}
               />
             </div>
