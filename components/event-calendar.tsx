@@ -466,7 +466,7 @@ const [dragId, setDragId] = useState<string | null>(null)
         .filter(([di]) => Number(di) !== dayIndex)
         .reduce((sum, [, ds]) => sum + (ds.mondaySlot === "help-whistle" ? ds.mondayWhistleCount : 0), 0)
       const max = (inventory["help-whistle"] ?? 0) - otherUsed
-      const newCount = Math.max(1, Math.min(max, s.mondayWhistleCount + delta))
+      const newCount = Math.max(1, Math.min(max, delta))
       return { ...prev, [dayIndex]: { ...s, mondayWhistleCount: newCount } }
     })
   }
@@ -640,7 +640,11 @@ const [dragId, setDragId] = useState<string | null>(null)
                   e.dataTransfer.setDragImage(img, 20, 20)
                 }}
                 onTapFromSlot={(slot, itemId) => onTapFromSlot(day.dayIndex, slot, itemId)}
-                onWhistleCountChange={(delta) => changeMondayWhistleCount(day.dayIndex, delta)}
+                onWhistleCountChange={(value) => changeMondayWhistleCount(day.dayIndex, value)}
+                whistleMax={(() => {
+                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.mondaySlot === "help-whistle" ? ds.mondayWhistleCount : 0), 0)
+                  return Math.max(1, (inventory["help-whistle"] ?? 0) - otherUsed)
+                })()}
               />
             ))}
           </div>
@@ -670,7 +674,11 @@ const [dragId, setDragId] = useState<string | null>(null)
                 const img = new Image(); img.src = getIncenseById(itemId)?.imageUrl ?? ""
                 e.dataTransfer.setDragImage(img, 20, 20)
               }}
-              onWhistleCountChange={(delta) => changeMondayWhistleCount(day.dayIndex, delta)}
+              onWhistleCountChange={(value) => changeMondayWhistleCount(day.dayIndex, value)}
+              whistleMax={(() => {
+                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.mondaySlot === "help-whistle" ? ds.mondayWhistleCount : 0), 0)
+                return Math.max(1, (inventory["help-whistle"] ?? 0) - otherUsed)
+              })()}
             />
           ))}
         </div>
@@ -743,7 +751,8 @@ interface DayCellProps {
   onTapFromSlot: (slot: keyof DaySlots, itemId: string) => void
   onClearSlot: (slot: keyof DaySlots) => void
   onDragFromSlot: (slot: keyof DaySlots, itemId: string, e: React.DragEvent) => void
-  onWhistleCountChange: (delta: number) => void
+  onWhistleCountChange: (value: number) => void
+  whistleMax: number
 }
 
 /** 汎用アイテムスロット */
@@ -831,7 +840,7 @@ function ItemSlot({
 function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
-  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange,
+  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -918,11 +927,17 @@ function DayCell({
                   onDragFromSlot={slots.mondaySlot ? (e) => onDragFromSlot("mondaySlot", slots.mondaySlot!, e) : undefined}
                 />
                 {slots.mondaySlot === "help-whistle" && (
-                  <div className="flex items-center gap-0.5">
-                    <button onClick={() => onWhistleCountChange(-1)} className="w-3 h-3 flex items-center justify-center text-gray-300 hover:text-black text-[9px] leading-none">−</button>
-                    <span className="text-[9px] font-bold w-3 text-center text-black">{slots.mondayWhistleCount}</span>
-                    <button onClick={() => onWhistleCountChange(1)} className="w-3 h-3 flex items-center justify-center text-gray-300 hover:text-black text-[9px] leading-none">＋</button>
-                  </div>
+                  <select
+                    value={slots.mondayWhistleCount}
+                    onChange={(e) => onWhistleCountChange(Number(e.target.value))}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-10 text-[9px] font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded py-0.5 focus:outline-none focus:border-blue-400"
+                    style={{ textAlignLast: "center" }}
+                  >
+                    {Array.from({ length: whistleMax }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>{i + 1}</option>
+                    ))}
+                  </select>
                 )}
               </div>
               <ItemSlot
