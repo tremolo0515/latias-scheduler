@@ -561,9 +561,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                     <option key={i} value={i}>{i}</option>
                   ))}
                 </select>
-                {used > 0 && (
-                  <span className="text-[8px] text-blue-500">配置:{used}</span>
-                )}
+                <span className={cn("text-[8px] text-blue-500", used === 0 && "invisible")}>配置:{used}</span>
 
               </div>
             )
