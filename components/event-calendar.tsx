@@ -638,6 +638,7 @@ const [dragId, setDragId] = useState<string | null>(null)
               onDragLeave={() => setDragOverDay(null)}
               onDropSlot={(slot) => onDropSlot(day.dayIndex, slot)}
               onTapSlot={(slot) => onTapSlot(day.dayIndex, slot)}
+              onTapFromSlot={(slot, itemId) => onTapFromSlot(day.dayIndex, slot, itemId)}
               onClearSlot={(slot) => clearSlot(day.dayIndex, slot)}
               onDragFromSlot={(slot, itemId, e) => {
                 setDragId(itemId)
