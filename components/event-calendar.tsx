@@ -902,7 +902,7 @@ function DayCell({
                 isTapTarget={tapSelectedId === "master-sable" && !slots.sableSlot}
                 isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
                 hasTapSelected={!!tapSelectedId}
-                bgImageUrls={[getIncenseById("master-sable")?.imageUrl ?? ""]}
+              bgImageUrls={["/img/poke_sable.png"]}
                 onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined} onClear={() => onClearSlot("sableSlot")}
                 onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
               />
