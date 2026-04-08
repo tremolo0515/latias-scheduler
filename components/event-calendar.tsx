@@ -121,6 +121,47 @@ const CALENDAR_EVENTS: CalendarEvent[] = [
 
 const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null, sableCount: 1 })
 
+// ─── うもう必要数計算 ─────────────────────────────────────────
+/**
+ * ラティアスのおこう n 個 + ラティアスサブレ m 個を
+ * 最小うもうで入手するためのコストを返す。
+ * - ラティアスサブレは1個が無料配布（0コスト）
+ * - week2Available: 2週目月曜（dayIndex>=7）以降は在庫が追加される
+ *
+ * 在庫と単価（安い順に購入）:
+ *   おこう W1: [2@80, 7@160]  W2追加: [2@70]
+ *   サブレ W1: [2@60, 10@120] W2追加: [2@50]
+ */
+function calcUmou(nOkou: number, nSable: number, week2Available: boolean): number {
+  let cost = 0
+
+  // おこう: 安い順に購入
+  const okuLots: [number, number][] = week2Available
+    ? [[2, 70], [2, 80], [7, 160]]
+    : [[2, 80], [7, 160]]
+  let rem = nOkou
+  for (const [stock, price] of okuLots) {
+    const buy = Math.min(rem, stock)
+    cost += buy * price
+    rem -= buy
+    if (rem <= 0) break
+  }
+
+  // サブレ: 1個は無料配布なので max(0, m-1) を購入
+  const sableLots: [number, number][] = week2Available
+    ? [[2, 50], [2, 60], [10, 120]]
+    : [[2, 60], [10, 120]]
+  rem = Math.max(0, nSable - 1)
+  for (const [stock, price] of sableLots) {
+    const buy = Math.min(rem, stock)
+    cost += buy * price
+    rem -= buy
+    if (rem <= 0) break
+  }
+
+  return cost
+}
+
 // ─── 提案ロジック ──────────────────────────────────────────
 
 /** ニュームーンデーの dayIndex（4/16木・4/17金・4/18土） */
@@ -316,6 +357,22 @@ const [dragId, setDragId] = useState<string | null>(null)
     if (e.touches.length < 2) pinchRef.current = null
   }
 
+  // うもう計算: dayIndex 0..D までの累積必要うもう数
+  const umouCumulative: Record<number, number> = (() => {
+    const result: Record<number, number> = {}
+    let nOkou = 0
+    let nSable = 0
+    for (const day of EVENT_DAYS) {
+      const s = daySlots[day.dayIndex]
+      nOkou  += (s.slot1 === "latias" ? 1 : 0) + (s.slot2 === "latias" ? 1 : 0)
+      nSable += s.sableSlot === "latias-sable" ? s.sableCount : 0
+      result[day.dayIndex] = calcUmou(nOkou, nSable, day.dayIndex >= 7)
+    }
+    return result
+  })()
+
+  const totalUmou = umouCumulative[13] ?? 0
+
   // 在庫の配置済み合計（全スロット集計）
   function usedCount(id: string): number {
     return Object.values(daySlots).reduce((sum, s) => {
@@ -368,9 +425,25 @@ const [dragId, setDragId] = useState<string | null>(null)
 
     setDaySlots(prev => {
       let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: dragId } }
+      // slot1/slot2 に latias 以外をドロップして latias が消えた場合、sableSlot を強制クリア
+      if (slot === "slot1" || slot === "slot2") {
+        const day = next[dayIndex]
+        if (day.slot1 !== "latias" && day.slot2 !== "latias" && day.sableSlot) {
+          next = { ...next, [dayIndex]: { ...day, sableSlot: null, sableCount: 1 } }
+        }
+      }
       // 移動元スロットをクリア
       if (dragSource) {
-        next = { ...next, [dragSource.dayIndex]: { ...next[dragSource.dayIndex], [dragSource.slot]: null } }
+        const srcDay = next[dragSource.dayIndex]
+        let srcUpdate: Partial<DaySlots> = { [dragSource.slot]: null }
+        // 移動元で latias が消えた場合も sableSlot をクリア
+        if (dragSource.slot === "slot1" || dragSource.slot === "slot2") {
+          const afterSrc = { ...srcDay, [dragSource.slot]: null }
+          if (afterSrc.slot1 !== "latias" && afterSrc.slot2 !== "latias" && srcDay.sableSlot) {
+            srcUpdate = { ...srcUpdate, sableSlot: null, sableCount: 1 }
+          }
+        }
+        next = { ...next, [dragSource.dayIndex]: { ...srcDay, ...srcUpdate } }
       }
       return next
     })
@@ -434,8 +507,23 @@ const [dragId, setDragId] = useState<string | null>(null)
 
     setDaySlots(prev => {
       let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: id } }
+      // slot1/slot2 に latias 以外を置いて latias が消えた場合、sableSlot を強制クリア
+      if (slot === "slot1" || slot === "slot2") {
+        const day = next[dayIndex]
+        if (day.slot1 !== "latias" && day.slot2 !== "latias" && day.sableSlot) {
+          next = { ...next, [dayIndex]: { ...day, sableSlot: null, sableCount: 1 } }
+        }
+      }
       if (tapSource) {
-        next = { ...next, [tapSource.dayIndex]: { ...next[tapSource.dayIndex], [tapSource.slot]: null } }
+        const srcDay = next[tapSource.dayIndex]
+        let srcUpdate: Partial<DaySlots> = { [tapSource.slot]: null }
+        if (tapSource.slot === "slot1" || tapSource.slot === "slot2") {
+          const afterSrc = { ...srcDay, [tapSource.slot]: null }
+          if (afterSrc.slot1 !== "latias" && afterSrc.slot2 !== "latias" && srcDay.sableSlot) {
+            srcUpdate = { ...srcUpdate, sableSlot: null, sableCount: 1 }
+          }
+        }
+        next = { ...next, [tapSource.dayIndex]: { ...srcDay, ...srcUpdate } }
       }
       return next
     })
@@ -449,15 +537,25 @@ const [dragId, setDragId] = useState<string | null>(null)
   }
 
   function clearSlot(dayIndex: number, slot: keyof DaySlots) {
-    setDaySlots(prev => ({
-      ...prev,
-      [dayIndex]: {
-        ...prev[dayIndex],
-        [slot]: null,
-        ...(slot === "mondaySlot" ? { mondayWhistleCount: 1 } : {}),
-        ...(slot === "sableSlot" ? { sableCount: 1 } : {}),
-      },
-    }))
+    setDaySlots(prev => {
+      const day = prev[dayIndex]
+      // slot1/slot2 から latias を外したとき、もう一方にも latias がなければ sableSlot を強制クリア
+      const clearingLatias =
+        (slot === "slot1" && day.slot1 === "latias") ||
+        (slot === "slot2" && day.slot2 === "latias")
+      const otherSlotHasLatias = slot === "slot1" ? day.slot2 === "latias" : day.slot1 === "latias"
+      const shouldClearSable = clearingLatias && !otherSlotHasLatias
+      return {
+        ...prev,
+        [dayIndex]: {
+          ...day,
+          [slot]: null,
+          ...(slot === "mondaySlot" ? { mondayWhistleCount: 1 } : {}),
+          ...(slot === "sableSlot" ? { sableCount: 1 } : {}),
+          ...(shouldClearSable ? { sableSlot: null, sableCount: 1 } : {}),
+        },
+      }
+    })
   }
 
   function changeSableCount(dayIndex: number, value: number) {
@@ -584,6 +682,15 @@ const [dragId, setDragId] = useState<string | null>(null)
           </div>
       </section>
 
+      {/* ── うもう必要数サマリー ── */}
+      {totalUmou > 0 && (
+        <div className="mx-4 mb-2 px-3 py-2 rounded-xl bg-purple-50 border border-purple-200 flex items-center gap-2">
+          <span className="text-sm">🪶</span>
+          <span className="text-xs text-purple-700 font-medium">合計必要うもう数</span>
+          <span className="ml-auto text-sm font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
+        </div>
+      )}
+
       {/* ── ボタンエリア ── */}
       <div className="px-4 mb-2 flex gap-2">
         <button
@@ -663,6 +770,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                   const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0), 0)
                   return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed)
                 })()}
+                cumulativeUmou={umouCumulative[day.dayIndex] ?? 0}
               />
             ))}
           </div>
@@ -702,6 +810,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                 const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0), 0)
                 return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed)
               })()}
+              cumulativeUmou={umouCumulative[day.dayIndex] ?? 0}
             />
           ))}
         </div>
@@ -778,6 +887,7 @@ interface DayCellProps {
   whistleMax: number
   onSableCountChange: (value: number) => void
   sableMax: number
+  cumulativeUmou: number
 }
 
 /** 汎用アイテムスロット */
@@ -808,7 +918,7 @@ function ItemSlot({
         item
           ? isTapSelected
             ? "bg-blue-100 border-blue-400 ring-2 ring-blue-300"
-            : itemId === "latias"
+            : itemId === "latias" || itemId === "latias-sable"
               ? "bg-purple-50 border-purple-300 shadow-[0_0_6px_1px_rgba(168,85,247,0.25)]"
               : "bg-gray-100 border-gray-300"
           : localOver || isTapTarget
@@ -865,7 +975,7 @@ function ItemSlot({
 function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
-  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax,
+  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax, cumulativeUmou,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -893,7 +1003,10 @@ function DayCell({
         <span className={cn("text-xs font-bold", isSun && "text-rose-500", isSat && "text-sky-600", !isSat && !isSun && "text-gray-700")}>
           {day.date}
         </span>
-        {day.isToday && <span className="text-[8px] px-1 py-0.5 bg-blue-500 text-white rounded font-bold">今日</span>}
+        {day.isToday
+          ? <span className="text-[8px] px-1 py-0.5 bg-blue-500 text-white rounded font-bold">今日</span>
+          : cumulativeUmou > 0 && <span className="text-[8px] text-purple-600 font-semibold">🪶{cumulativeUmou}</span>
+        }
       </div>
 
       {/* イベントバー用の予約スペース（EventBarsOverlay がここに重なる） */}
