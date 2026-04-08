@@ -177,6 +177,21 @@ export const INCENSE_MASTERS: IncenseMaster[] = [
     preferEarlyWeek: false,
     spreadEvenly: false,
   },
+  {
+    id: "latias-sable",
+    name: "ラティアスサブレ",
+    icon: "🍪",
+    imageUrl: "/img/latias_sable.png",
+    effectType: "treat",
+    effectShort: "ラティアスに使うおやつ（複数可）",
+    effectDetail: "ラティアスのおこうと同時に設置して使用。マスターサブレと排他的に使用。個数を指定できる。",
+    color: "bg-red-500/20 text-red-300 border-red-500/40",
+    pairedWith: "latias",
+    preferWeekend: true,
+    preferLate: false,
+    preferEarlyWeek: false,
+    spreadEvenly: false,
+  },
 ]
 
 export function getIncenseById(id: string): IncenseMaster | undefined {

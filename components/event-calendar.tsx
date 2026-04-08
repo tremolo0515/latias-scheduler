@@ -28,7 +28,8 @@ interface DaySlots {
   mondaySlot: string | null      // おてつだいホイッスル専用
   mondayWhistleCount: number     // ホイッスルの使用個数（複数可）
   campSlot: string | null        // いいキャンプチケット専用
-  sableSlot: string | null
+  sableSlot: string | null       // マスターサブレ or ラティアスサブレ（排他）
+  sableCount: number             // ラティアスサブレの使用個数（複数可）
 }
 
 interface DayInfo {
@@ -118,7 +119,7 @@ const CALENDAR_EVENTS: CalendarEvent[] = [
   },
 ]
 
-const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null })
+const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null, sableCount: 1 })
 
 // ─── 提案ロジック ──────────────────────────────────────────
 
@@ -323,7 +324,7 @@ const [dragId, setDragId] = useState<string | null>(null)
         + (s.slot2 === id ? 1 : 0)
         + (s.mondaySlot === id ? (id === "help-whistle" ? s.mondayWhistleCount : 1) : 0)
         + (s.campSlot === id ? 1 : 0)
-        + (s.sableSlot === id ? 1 : 0)
+        + (s.sableSlot === id ? (id === "latias-sable" ? s.sableCount : 1) : 0)
     }, 0)
   }
 
@@ -359,7 +360,7 @@ const [dragId, setDragId] = useState<string | null>(null)
     }
     if (slot === "mondaySlot" && dragId !== "help-whistle") return
     if (slot === "campSlot"   && dragId !== "good-camp")    return
-    if (slot === "sableSlot"  && dragId !== "master-sable") return
+    if (slot === "sableSlot"  && dragId !== "master-sable" && dragId !== "latias-sable") return
 
     // 在庫チェック（スロットからの移動は使用数-1で判定）
     const effectiveUsed = dragSource ? usedCount(dragId) - 1 : usedCount(dragId)
@@ -426,7 +427,7 @@ const [dragId, setDragId] = useState<string | null>(null)
     }
     if (slot === "mondaySlot" && id !== "help-whistle") return
     if (slot === "campSlot"   && id !== "good-camp")    return
-    if (slot === "sableSlot"  && id !== "master-sable") return
+    if (slot === "sableSlot"  && id !== "master-sable" && id !== "latias-sable") return
 
     const effectiveUsed = tapSource ? usedCount(id) - 1 : usedCount(id)
     if (effectiveUsed >= (inventory[id] ?? 0)) return
@@ -454,8 +455,22 @@ const [dragId, setDragId] = useState<string | null>(null)
         ...prev[dayIndex],
         [slot]: null,
         ...(slot === "mondaySlot" ? { mondayWhistleCount: 1 } : {}),
+        ...(slot === "sableSlot" ? { sableCount: 1 } : {}),
       },
     }))
+  }
+
+  function changeSableCount(dayIndex: number, value: number) {
+    setDaySlots(prev => {
+      const s = prev[dayIndex]
+      if (s.sableSlot !== "latias-sable") return prev
+      const otherUsed = Object.entries(prev)
+        .filter(([di]) => Number(di) !== dayIndex)
+        .reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0), 0)
+      const max = (inventory["latias-sable"] ?? 0) - otherUsed
+      const newCount = Math.max(1, Math.min(max, value))
+      return { ...prev, [dayIndex]: { ...s, sableCount: newCount } }
+    })
   }
 
   function changeMondayWhistleCount(dayIndex: number, delta: number) {
@@ -643,6 +658,11 @@ const [dragId, setDragId] = useState<string | null>(null)
                   const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.mondaySlot === "help-whistle" ? ds.mondayWhistleCount : 0), 0)
                   return Math.max(1, (inventory["help-whistle"] ?? 0) - otherUsed)
                 })()}
+                onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
+                sableMax={(() => {
+                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0), 0)
+                  return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed)
+                })()}
               />
             ))}
           </div>
@@ -676,6 +696,11 @@ const [dragId, setDragId] = useState<string | null>(null)
               whistleMax={(() => {
                 const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.mondaySlot === "help-whistle" ? ds.mondayWhistleCount : 0), 0)
                 return Math.max(1, (inventory["help-whistle"] ?? 0) - otherUsed)
+              })()}
+              onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
+              sableMax={(() => {
+                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0), 0)
+                return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed)
               })()}
             />
           ))}
@@ -751,6 +776,8 @@ interface DayCellProps {
   onDragFromSlot: (slot: keyof DaySlots, itemId: string, e: React.DragEvent) => void
   onWhistleCountChange: (value: number) => void
   whistleMax: number
+  onSableCountChange: (value: number) => void
+  sableMax: number
 }
 
 /** 汎用アイテムスロット */
@@ -838,7 +865,7 @@ function ItemSlot({
 function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
-  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax,
+  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -847,7 +874,6 @@ function DayCell({
 
   // ドラッグ中のアイテムがこのスロットに入れるかどうか
   const dragIsIncense = dragId ? isIncenseItem(dragId) : false
-  const dragIsSable   = dragId === "master-sable"
 
   return (
     <div
@@ -895,17 +921,31 @@ function DayCell({
               onDrop={() => onDropSlot("slot2")} onTap={() => onTapSlot("slot2")} onTapItem={slots.slot2 ? () => onTapFromSlot("slot2", slots.slot2!) : undefined} onClear={() => onClearSlot("slot2")}
               onDragFromSlot={slots.slot2 ? (e) => onDragFromSlot("slot2", slots.slot2!, e) : undefined}
             />
-            {/* マスターサブレスロット（ラティアス配置時のみ） */}
+            {/* サブレスロット（ラティアス配置時のみ・マスターサブレorラティアスサブレ排他） */}
             {hasLatias && (
-              <ItemSlot
-                itemId={slots.sableSlot} isOver={isDragOver && dragIsSable && !slots.sableSlot}
-                isTapTarget={tapSelectedId === "master-sable" && !slots.sableSlot}
-                isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
-                hasTapSelected={!!tapSelectedId}
-              bgImageUrls={["/img/poke_sable.png"]}
-                onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined} onClear={() => onClearSlot("sableSlot")}
-                onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
-              />
+              <div className="flex flex-col items-center gap-0.5">
+                <ItemSlot
+                  itemId={slots.sableSlot}
+                  isOver={isDragOver && (dragId === "master-sable" || dragId === "latias-sable") && !slots.sableSlot}
+                  isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === "latias-sable") && !slots.sableSlot}
+                  isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
+                  hasTapSelected={!!tapSelectedId}
+                  bgImageUrls={["/img/poke_sable.png"]}
+                  onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined} onClear={() => onClearSlot("sableSlot")}
+                  onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
+                />
+                <select
+                  value={slots.sableCount}
+                  onChange={(e) => onSableCountChange(Number(e.target.value))}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn("w-10 text-[9px] font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded py-0.5 focus:outline-none focus:border-blue-400", slots.sableSlot !== "latias-sable" && "invisible")}
+                  style={{ textAlignLast: "center" }}
+                >
+                  {Array.from({ length: sableMax }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>{i + 1}</option>
+                  ))}
+                </select>
+              </div>
             )}
           </div>
 
