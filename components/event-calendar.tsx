@@ -132,31 +132,69 @@ const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, mondaySlot: nul
  *   おこう W1: [2@80, 7@160]  W2追加: [2@70]
  *   サブレ W1: [2@60, 10@120] W2追加: [2@50]
  */
-function calcUmou(nOkou: number, nSable: number, week2Available: boolean): number {
+/**
+ * W1購入分はW1在庫のみ使用。
+ * W2購入分はW2新規在庫 + W1残在庫（安い順）から購入。
+ *
+ *   おこう W1在庫: [2@80, 7@160]  W2新規: [2@70]
+ *   サブレ W1在庫: [2@60, 10@120] W2新規: [2@50]
+ *   サブレは1個が無料配布（先頭1個を0円扱い）
+ */
+function calcUmou(nOkouW1: number, nOkouW2: number, nSableW1: number, nSableW2: number): number {
   let cost = 0
 
-  // おこう: 安い順に購入
-  const okuLots: [number, number][] = week2Available
-    ? [[2, 70], [2, 80], [7, 160]]
-    : [[2, 80], [7, 160]]
-  let rem = nOkou
-  for (const [stock, price] of okuLots) {
-    const buy = Math.min(rem, stock)
-    cost += buy * price
+  // ── おこう ──
+  const okouW1Stock: [number, number][] = [[2, 80], [7, 160]]
+  // W1購入分 → W1在庫から順に
+  let rem = nOkouW1
+  for (const lot of okouW1Stock) {
+    const buy = Math.min(rem, lot[0])
+    cost += buy * lot[1]
+    lot[0] -= buy
     rem -= buy
     if (rem <= 0) break
   }
+  // W2購入分 → W2新規在庫 + W1残在庫（安い順）
+  if (nOkouW2 > 0) {
+    const w2Available = ([[2, 70] as [number, number]].concat(
+      okouW1Stock.filter(([s]) => s > 0) as [number, number][]
+    )).sort((a, b) => a[1] - b[1])
+    rem = nOkouW2
+    for (const [stock, price] of w2Available) {
+      const buy = Math.min(rem, stock)
+      cost += buy * price
+      rem -= buy
+      if (rem <= 0) break
+    }
+  }
 
-  // サブレ: 1個は無料配布なので max(0, m-1) を購入
-  const sableLots: [number, number][] = week2Available
-    ? [[2, 50], [2, 60], [10, 120]]
-    : [[2, 60], [10, 120]]
-  rem = Math.max(0, nSable - 1)
-  for (const [stock, price] of sableLots) {
-    const buy = Math.min(rem, stock)
-    cost += buy * price
+  // ── サブレ ──
+  // 無料配布1個: W1に1個以上あればW1の先頭1個が無料、なければW2の先頭1個が無料
+  const sableW1Paid = nSableW1 >= 1 ? nSableW1 - 1 : 0
+  const sableW2Paid = nSableW1 >= 1 ? nSableW2 : Math.max(0, nSableW2 - 1)
+
+  const sableW1Stock: [number, number][] = [[2, 60], [10, 120]]
+  // W1購入分 → W1在庫から
+  rem = sableW1Paid
+  for (const lot of sableW1Stock) {
+    const buy = Math.min(rem, lot[0])
+    cost += buy * lot[1]
+    lot[0] -= buy
     rem -= buy
     if (rem <= 0) break
+  }
+  // W2購入分 → W2新規在庫 + W1残在庫（安い順）
+  if (sableW2Paid > 0) {
+    const w2SableAvailable = ([[2, 50] as [number, number]].concat(
+      sableW1Stock.filter(([s]) => s > 0) as [number, number][]
+    )).sort((a, b) => a[1] - b[1])
+    rem = sableW2Paid
+    for (const [stock, price] of w2SableAvailable) {
+      const buy = Math.min(rem, stock)
+      cost += buy * price
+      rem -= buy
+      if (rem <= 0) break
+    }
   }
 
   return cost
@@ -360,13 +398,15 @@ const [dragId, setDragId] = useState<string | null>(null)
   // うもう計算: dayIndex 0..D までの累積必要うもう数
   const umouCumulative: Record<number, number> = (() => {
     const result: Record<number, number> = {}
-    let nOkou = 0
-    let nSable = 0
+    let nOkouW1 = 0, nOkouW2 = 0
+    let nSableW1 = 0, nSableW2 = 0
     for (const day of EVENT_DAYS) {
       const s = daySlots[day.dayIndex]
-      nOkou  += (s.slot1 === "latias" ? 1 : 0) + (s.slot2 === "latias" ? 1 : 0)
-      nSable += s.sableSlot === "latias-sable" ? s.sableCount : 0
-      result[day.dayIndex] = calcUmou(nOkou, nSable, day.dayIndex >= 7)
+      const okouCount = (s.slot1 === "latias" ? 1 : 0) + (s.slot2 === "latias" ? 1 : 0)
+      const sableCount = s.sableSlot === "latias-sable" ? s.sableCount : 0
+      if (day.dayIndex < 7) { nOkouW1 += okouCount; nSableW1 += sableCount }
+      else                  { nOkouW2 += okouCount; nSableW2 += sableCount }
+      result[day.dayIndex] = calcUmou(nOkouW1, nOkouW2, nSableW1, nSableW2)
     }
     return result
   })()
@@ -628,12 +668,9 @@ const [dragId, setDragId] = useState<string | null>(null)
                 draggable={canDrag}
                 onDragStart={(e) => {
                   setDragId(incense.id)
-                  // ドラッグ中に表示するカスタム画像を設定
-                  const img = new Image()
-                  img.src = incense.imageUrl
-                  img.width = 48
-                  img.height = 48
-                  e.dataTransfer.setDragImage(img, 24, 24)
+                  // DOM内の既ロード済みimgを使う（new Image()は未ロード時にSafariでドラッグがキャンセルされる）
+                  const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
+                  if (imgEl) e.dataTransfer.setDragImage(imgEl, 20, 20)
                 }}
                 onDragEnd={() => { setDragId(null); setDragSource(null) }}
                 data-tap-item
@@ -682,17 +719,8 @@ const [dragId, setDragId] = useState<string | null>(null)
           </div>
       </section>
 
-      {/* ── うもう必要数サマリー ── */}
-      {totalUmou > 0 && (
-        <div className="mx-4 mb-2 px-3 py-2 rounded-xl bg-purple-50 border border-purple-200 flex items-center gap-2">
-          <span className="text-sm">🪶</span>
-          <span className="text-xs text-purple-700 font-medium">合計必要うもう数</span>
-          <span className="ml-auto text-sm font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
-        </div>
-      )}
-
       {/* ── ボタンエリア ── */}
-      <div className="px-4 mb-2 flex gap-2">
+      <div className="px-4 mb-2 flex items-center gap-2">
         <button
           onClick={handleSuggest}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-linear-to-b from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md transition-colors whitespace-nowrap"
@@ -709,6 +737,13 @@ const [dragId, setDragId] = useState<string | null>(null)
         >
           <span className="text-xs font-semibold">クリア</span>
         </button>
+        {totalUmou > 0 && (
+          <div className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 border border-purple-200">
+            <span className="text-sm">🪶</span>
+            <span className="text-xs text-purple-700 font-medium">合計必要うもう数</span>
+            <span className="text-sm font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
+          </div>
+        )}
       </div>
 
       {/* ── カレンダーグリッド ── */}
@@ -756,8 +791,8 @@ const [dragId, setDragId] = useState<string | null>(null)
                 onDragFromSlot={(slot, itemId, e) => {
                   setDragId(itemId)
                   setDragSource({ dayIndex: day.dayIndex, slot })
-                  const img = new Image(); img.src = getIncenseById(itemId)?.imageUrl ?? ""
-                  e.dataTransfer.setDragImage(img, 20, 20)
+                  // e.target はスロット内の<img>要素（既ロード済み）
+                  e.dataTransfer.setDragImage(e.target as Element, 20, 20)
                 }}
                 onTapFromSlot={(slot, itemId) => onTapFromSlot(day.dayIndex, slot, itemId)}
                 onWhistleCountChange={(value) => changeMondayWhistleCount(day.dayIndex, value)}
@@ -797,8 +832,7 @@ const [dragId, setDragId] = useState<string | null>(null)
               onDragFromSlot={(slot, itemId, e) => {
                 setDragId(itemId)
                 setDragSource({ dayIndex: day.dayIndex, slot })
-                const img = new Image(); img.src = getIncenseById(itemId)?.imageUrl ?? ""
-                e.dataTransfer.setDragImage(img, 20, 20)
+                e.dataTransfer.setDragImage(e.target as Element, 20, 20)
               }}
               onWhistleCountChange={(value) => changeMondayWhistleCount(day.dayIndex, value)}
               whistleMax={(() => {
