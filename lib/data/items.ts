@@ -28,6 +28,8 @@ export interface IncenseMaster {
   color: string
   /** 同時使用推奨アイテムのID（マスターサブレ → ラティアスのおこう） */
   pairedWith?: string
+  /** 在庫入力の上限（未指定時は99） */
+  maxStock?: number
   // ── 提案ルール ──
   preferWeekend: boolean   // 土日優先
   preferLate: boolean      // イベント後半優先
@@ -123,6 +125,7 @@ export const INCENSE_MASTERS: IncenseMaster[] = [
   {
     id: "latias",
     name: "ラティアスのおこう",
+    maxStock: 11,
     icon: "🟣",
     imageUrl: "/img/okou_latias.png",
     effectType: "pokemon",
@@ -180,6 +183,7 @@ export const INCENSE_MASTERS: IncenseMaster[] = [
   {
     id: "latias-sable",
     name: "ラティアスサブレ",
+    maxStock: 15,
     icon: "🍪",
     imageUrl: "/img/latias_sable.png",
     effectType: "treat",

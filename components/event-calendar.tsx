@@ -18,9 +18,10 @@ function isIncenseItem(id: string) {
 
 /**
  * 1日のスロット構成
- * - slot1/slot2: おこう専用（2個）
- * - mondaySlot:  月曜日のみ / ホイッスル・キャンプチケット専用
- * - sableSlot:   ラティアスのおこう配置時のみ出現 / マスターサブレ専用
+ * - slot1/slot2:     おこう専用（2個）
+ * - mondaySlot:      月曜日のみ / ホイッスル・キャンプチケット専用
+ * - sableSlot:       ラティアスのおこう配置時のみ出現 / マスターサブレ専用
+ * - carryoverSlot:   最終日（4/19）のみ / ラティアスのおこう持ち越し専用
  */
 interface DaySlots {
   slot1: string | null
@@ -30,6 +31,7 @@ interface DaySlots {
   campSlot: string | null        // いいキャンプチケット専用
   sableSlot: string | null       // マスターサブレ or ラティアスサブレ（排他）
   sableCount: number             // ラティアスサブレの使用個数（複数可）
+  carryoverSlot: string | null   // 最終日のみ / ラティアスのおこう持ち越し専用
 }
 
 interface DayInfo {
@@ -46,7 +48,7 @@ interface DayInfo {
 // ─── 定数 ──────────────────────────────────────────────────
 
 const EVENT_DAYS: DayInfo[] = [
-  { date: 6,  dayOfWeek: "月", dayIndex: 0,  isToday: true,  isWeekend: false, isFriday: false, isEarlyWeek: true,  isLate: false },
+  { date: 6,  dayOfWeek: "月", dayIndex: 0,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: true,  isLate: false },
   { date: 7,  dayOfWeek: "火", dayIndex: 1,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: true,  isLate: false },
   { date: 8,  dayOfWeek: "水", dayIndex: 2,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: true,  isLate: false },
   { date: 9,  dayOfWeek: "木", dayIndex: 3,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: false, isLate: false },
@@ -119,7 +121,7 @@ const CALENDAR_EVENTS: CalendarEvent[] = [
   },
 ]
 
-const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null, sableCount: 1 })
+const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null, sableCount: 1, carryoverSlot: null })
 
 // ─── うもう必要数計算 ─────────────────────────────────────────
 /**
@@ -366,7 +368,7 @@ export function EventCalendar() {
 const [dragId, setDragId] = useState<string | null>(null)
   const [dragSource, setDragSource] = useState<{ dayIndex: number; slot: keyof DaySlots } | null>(null)
   const [dragOverDay, setDragOverDay] = useState<number | null>(null)
-  const [isSuggested, setIsSuggested] = useState(false)
+
   const [activeTooltip, setActiveTooltip] = useState<{ id: string; x: number; y: number } | null>(null)
   const [tapSelectedId, setTapSelectedId] = useState<string | null>(null)
   const [tapSource, setTapSource] = useState<{ dayIndex: number; slot: keyof DaySlots } | null>(null)
@@ -402,7 +404,7 @@ const [dragId, setDragId] = useState<string | null>(null)
     let nSableW1 = 0, nSableW2 = 0
     for (const day of EVENT_DAYS) {
       const s = daySlots[day.dayIndex]
-      const okouCount = (s.slot1 === "latias" ? 1 : 0) + (s.slot2 === "latias" ? 1 : 0)
+      const okouCount = (s.slot1 === "latias" ? 1 : 0) + (s.slot2 === "latias" ? 1 : 0) + (s.carryoverSlot === "latias" ? 1 : 0)
       const sableCount = s.sableSlot === "latias-sable" ? s.sableCount : 0
       if (day.dayIndex < 7) { nOkouW1 += okouCount; nSableW1 += sableCount }
       else                  { nOkouW2 += okouCount; nSableW2 += sableCount }
@@ -413,6 +415,18 @@ const [dragId, setDragId] = useState<string | null>(null)
 
   const totalUmou = umouCumulative[13] ?? 0
 
+  // 今日の dayIndex（イベント期間外なら -1）
+  const todayDayIndex = (() => {
+    const now = new Date()
+    const month = now.getMonth() + 1  // 1-indexed
+    const day   = now.getDate()
+    if (month !== 4) return -1
+    const found = EVENT_DAYS.find(d => d.date === day)
+    return found ? found.dayIndex : -1
+  })()
+  // 残り日数（今日含む）
+  const remainingDays = todayDayIndex >= 0 ? 14 - todayDayIndex : 0
+
   // 在庫の配置済み合計（全スロット集計）
   function usedCount(id: string): number {
     return Object.values(daySlots).reduce((sum, s) => {
@@ -422,18 +436,17 @@ const [dragId, setDragId] = useState<string | null>(null)
         + (s.mondaySlot === id ? (id === "help-whistle" ? s.mondayWhistleCount : 1) : 0)
         + (s.campSlot === id ? 1 : 0)
         + (s.sableSlot === id ? (id === "latias-sable" ? s.sableCount : 1) : 0)
+        + (s.carryoverSlot === id ? 1 : 0)
     }, 0)
   }
 
   // 提案
   function handleSuggest() {
     setDaySlots(generatePlan(inventory))
-    setIsSuggested(true)
   }
 
   function clearPlan() {
     setDaySlots(Object.fromEntries(EVENT_DAYS.map(d => [d.dayIndex, EMPTY_SLOTS()])))
-    setIsSuggested(false)
   }
 
   // D&D: スロットにドロップ
@@ -455,9 +468,11 @@ const [dragId, setDragId] = useState<string | null>(null)
       const POKEMON_LATIAS = new Set(["pokemon", "latias"])
       if (POKEMON_LATIAS.has(dragId) && other && POKEMON_LATIAS.has(other)) return
     }
-    if (slot === "mondaySlot" && dragId !== "help-whistle") return
-    if (slot === "campSlot"   && dragId !== "good-camp")    return
-    if (slot === "sableSlot"  && dragId !== "master-sable" && dragId !== "latias-sable") return
+    if (slot === "mondaySlot"    && dragId !== "help-whistle") return
+    if (slot === "campSlot"      && dragId !== "good-camp")    return
+    if (slot === "sableSlot"     && dragId !== "master-sable" && dragId !== "latias-sable") return
+    if (slot === "carryoverSlot" && dragId !== "latias") return
+    if (slot === "carryoverSlot" && dayIndex !== 13) return
 
     // 在庫チェック（スロットからの移動は使用数-1で判定）
     const effectiveUsed = dragSource ? usedCount(dragId) - 1 : usedCount(dragId)
@@ -538,9 +553,11 @@ const [dragId, setDragId] = useState<string | null>(null)
       const POKEMON_LATIAS = new Set(["pokemon", "latias"])
       if (POKEMON_LATIAS.has(id) && other && POKEMON_LATIAS.has(other)) return
     }
-    if (slot === "mondaySlot" && id !== "help-whistle") return
-    if (slot === "campSlot"   && id !== "good-camp")    return
-    if (slot === "sableSlot"  && id !== "master-sable" && id !== "latias-sable") return
+    if (slot === "mondaySlot"    && id !== "help-whistle") return
+    if (slot === "campSlot"      && id !== "good-camp")    return
+    if (slot === "sableSlot"     && id !== "master-sable" && id !== "latias-sable") return
+    if (slot === "carryoverSlot" && id !== "latias") return
+    if (slot === "carryoverSlot" && dayIndex !== 13) return
 
     const effectiveUsed = tapSource ? usedCount(id) - 1 : usedCount(id)
     if (effectiveUsed >= (inventory[id] ?? 0)) return
@@ -639,7 +656,9 @@ const [dragId, setDragId] = useState<string | null>(null)
         <h1 className="text-lg font-bold text-gray-800 mb-0.5">ラティアスリサーチ スケジューラー</h1>
         <p className="text-xs text-gray-500">
           4/6(月) 〜 4/19(日)
-          <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full text-xs font-medium">残り14日</span>
+          {remainingDays > 0 && (
+            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full text-xs font-medium">残り{remainingDays}日</span>
+          )}
         </p>
       </header>
 
@@ -707,7 +726,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                   className="w-full text-xs font-bold text-center text-gray-800 bg-gray-50 border border-gray-200 rounded py-0.5 focus:outline-none focus:border-blue-400"
                   style={{ textAlignLast: "center" }}
                 >
-                  {Array.from({ length: (incense.id === "good-camp" ? 2 : 99) + 1 }, (_, i) => (
+                  {Array.from({ length: (incense.maxStock ?? (incense.id === "good-camp" ? 2 : 99)) + 1 }, (_, i) => (
                     <option key={i} value={i}>{i}</option>
                   ))}
                 </select>
@@ -730,10 +749,7 @@ const [dragId, setDragId] = useState<string | null>(null)
         </button>
         <button
           onClick={clearPlan}
-          className={cn(
-            "flex items-center px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-600 shadow-sm transition-colors whitespace-nowrap",
-            !isSuggested && "invisible pointer-events-none"
-          )}
+          className="flex items-center px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-600 shadow-sm transition-colors whitespace-nowrap"
         >
           <span className="text-xs font-semibold">クリア</span>
         </button>
@@ -806,6 +822,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                   return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed)
                 })()}
                 cumulativeUmou={umouCumulative[day.dayIndex] ?? 0}
+                todayDayIndex={todayDayIndex}
               />
             ))}
           </div>
@@ -845,6 +862,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                 return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed)
               })()}
               cumulativeUmou={umouCumulative[day.dayIndex] ?? 0}
+              todayDayIndex={todayDayIndex}
             />
           ))}
         </div>
@@ -922,6 +940,7 @@ interface DayCellProps {
   onSableCountChange: (value: number) => void
   sableMax: number
   cumulativeUmou: number
+  todayDayIndex: number
 }
 
 /** 汎用アイテムスロット */
@@ -998,7 +1017,7 @@ function ItemSlot({
           </button>
         </>
       ) : label ? (
-        <span className={cn("relative text-[7px] leading-tight text-center px-0.5", localOver ? "text-blue-500" : monday ? "text-amber-500" : "text-gray-400")}>{localOver ? "↓" : label}</span>
+        <span className={cn("relative text-[7px] leading-tight text-center px-0.5 whitespace-pre-line", localOver ? "text-blue-500" : monday ? "text-amber-500" : "text-gray-300")}>{localOver ? "↓" : label}</span>
       ) : (
         <span className={cn("relative text-[8px]", localOver ? "text-blue-500" : "text-gray-400")}>{localOver ? "↓" : ""}</span>
       )}
@@ -1009,7 +1028,7 @@ function ItemSlot({
 function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
-  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax, cumulativeUmou,
+  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax, cumulativeUmou, todayDayIndex,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -1023,10 +1042,10 @@ function DayCell({
     <div
       className={cn(
         "relative flex flex-col rounded-lg border p-1 transition-all duration-150",
-        day.isToday && "border-blue-500 bg-blue-50",
-        !day.isToday && isSat && "border-sky-300 bg-sky-50",
-        !day.isToday && isSun && "border-rose-300 bg-rose-50",
-        !day.isToday && !isSat && !isSun && "border-gray-200 bg-white",
+        day.dayIndex === todayDayIndex && "border-blue-500 bg-blue-50",
+        day.dayIndex !== todayDayIndex && isSat && "border-sky-300 bg-sky-50",
+        day.dayIndex !== todayDayIndex && isSun && "border-rose-300 bg-rose-50",
+        day.dayIndex !== todayDayIndex && !isSat && !isSun && "border-gray-200 bg-white",
         isDragOver && "border-blue-400 bg-blue-50 scale-[1.02]",
       )}
       onDragOver={onDragOver}
@@ -1037,17 +1056,14 @@ function DayCell({
         <span className={cn("text-xs font-bold", isSun && "text-rose-500", isSat && "text-sky-600", !isSat && !isSun && "text-gray-700")}>
           {day.date}
         </span>
-        {day.isToday
-          ? <span className="text-[8px] px-1 py-0.5 bg-blue-500 text-white rounded font-bold">今日</span>
-          : cumulativeUmou > 0 && <span className="text-[8px] text-purple-600 font-semibold">🪶{cumulativeUmou}</span>
-        }
+        {cumulativeUmou > 0 && <span className="text-[8px] text-purple-600 font-semibold">累計🪶: {cumulativeUmou}</span>}
       </div>
 
       {/* イベントバー用の予約スペース（EventBarsOverlay がここに重なる） */}
       <div className="h-14 shrink-0" />
 
       {/* スロット */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5 w-full">
           {/* おこうスロット */}
           <div className="flex gap-0.5">
             <ItemSlot
@@ -1134,6 +1150,28 @@ function DayCell({
                 onDrop={() => onDropSlot("campSlot")} onTap={() => onTapSlot("campSlot")} onTapItem={slots.campSlot ? () => onTapFromSlot("campSlot", slots.campSlot!) : undefined} onClear={() => onClearSlot("campSlot")}
                 onDragFromSlot={slots.campSlot ? (e) => onDragFromSlot("campSlot", slots.campSlot!, e) : undefined}
               />
+            </div>
+          )}
+
+          {/* 持ち越しスロット（最終日 4/19 のみ） */}
+          {day.dayIndex === 13 && (
+            <div className="flex">
+              <div className="ml-auto">
+                <ItemSlot
+                  itemId={slots.carryoverSlot}
+                  isOver={isDragOver && dragId === "latias" && !slots.carryoverSlot}
+                  isTapTarget={tapSelectedId === "latias" && !slots.carryoverSlot}
+                  isTapSelected={tapSelectedId === slots.carryoverSlot && !!slots.carryoverSlot}
+                  hasTapSelected={!!tapSelectedId}
+                  label={"持越し"}
+                  bgImageUrls={[getIncenseById("latias")?.imageUrl ?? ""]}
+                  onDrop={() => onDropSlot("carryoverSlot")}
+                  onTap={() => onTapSlot("carryoverSlot")}
+                  onTapItem={slots.carryoverSlot ? () => onTapFromSlot("carryoverSlot", slots.carryoverSlot!) : undefined}
+                  onClear={() => onClearSlot("carryoverSlot")}
+                  onDragFromSlot={slots.carryoverSlot ? (e) => onDragFromSlot("carryoverSlot", slots.carryoverSlot!, e) : undefined}
+                />
+              </div>
             </div>
           )}
       </div>
