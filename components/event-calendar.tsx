@@ -18,7 +18,9 @@ function isIncenseItem(id: string) {
 
 /**
  * 1日のスロット構成
- * - slot1/slot2:     おこう専用（2個）
+ * - slot1/slot2:     1回目睡眠のおこう専用（2個）
+ * - slot3/slot4:     2回目睡眠のおこう専用（分割睡眠ONの日のみ表示）
+ * - splitSleep:      分割睡眠フラグ（日ごと）
  * - mondaySlot:      月曜日のみ / ホイッスル・キャンプチケット専用
  * - sableSlot:       ラティアスのおこう配置時のみ出現 / マスターサブレ専用
  * - carryoverSlot:   最終日（4/19）のみ / ラティアスのおこう持ち越し専用
@@ -26,11 +28,16 @@ function isIncenseItem(id: string) {
 interface DaySlots {
   slot1: string | null
   slot2: string | null
+  slot3: string | null           // 2回目睡眠スロット（分割睡眠時）
+  slot4: string | null           // 2回目睡眠スロット（分割睡眠時）
+  splitSleep: boolean            // 分割睡眠フラグ
   mondaySlot: string | null      // おてつだいホイッスル専用
   mondayWhistleCount: number     // ホイッスルの使用個数（複数可）
   campSlot: string | null        // いいキャンプチケット専用
-  sableSlot: string | null       // マスターサブレ or ラティアスサブレ（排他）
-  sableCount: number             // ラティアスサブレの使用個数（複数可）
+  sableSlot: string | null       // 1回目睡眠: マスターサブレ or ラティアスサブレ（排他）
+  sableCount: number             // 1回目睡眠: ラティアスサブレの使用個数
+  sableSlot2: string | null      // 2回目睡眠: マスターサブレ or ラティアスサブレ（排他）
+  sableCount2: number            // 2回目睡眠: ラティアスサブレの使用個数
   carryoverSlot: string | null   // 最終日のみ / ラティアスのおこう持ち越し専用
 }
 
@@ -121,7 +128,7 @@ const CALENDAR_EVENTS: CalendarEvent[] = [
   },
 ]
 
-const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null, sableCount: 1, carryoverSlot: null })
+const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, slot3: null, slot4: null, splitSleep: false, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null, sableCount: 1, sableSlot2: null, sableCount2: 1, carryoverSlot: null })
 
 // ─── うもう必要数計算 ─────────────────────────────────────────
 /**
@@ -404,8 +411,8 @@ const [dragId, setDragId] = useState<string | null>(null)
     let nSableW1 = 0, nSableW2 = 0
     for (const day of EVENT_DAYS) {
       const s = daySlots[day.dayIndex]
-      const okouCount = (s.slot1 === "latias" ? 1 : 0) + (s.slot2 === "latias" ? 1 : 0) + (s.carryoverSlot === "latias" ? 1 : 0)
-      const sableCount = s.sableSlot === "latias-sable" ? s.sableCount : 0
+      const okouCount = (s.slot1 === "latias" ? 1 : 0) + (s.slot2 === "latias" ? 1 : 0) + (s.slot3 === "latias" ? 1 : 0) + (s.slot4 === "latias" ? 1 : 0) + (s.carryoverSlot === "latias" ? 1 : 0)
+      const sableCount = (s.sableSlot === "latias-sable" ? s.sableCount : 0) + (s.sableSlot2 === "latias-sable" ? s.sableCount2 : 0)
       if (day.dayIndex < 7) { nOkouW1 += okouCount; nSableW1 += sableCount }
       else                  { nOkouW2 += okouCount; nSableW2 += sableCount }
       result[day.dayIndex] = calcUmou(nOkouW1, nOkouW2, nSableW1, nSableW2)
@@ -433,9 +440,12 @@ const [dragId, setDragId] = useState<string | null>(null)
       return sum
         + (s.slot1 === id ? 1 : 0)
         + (s.slot2 === id ? 1 : 0)
+        + (s.slot3 === id ? 1 : 0)
+        + (s.slot4 === id ? 1 : 0)
         + (s.mondaySlot === id ? (id === "help-whistle" ? s.mondayWhistleCount : 1) : 0)
         + (s.campSlot === id ? 1 : 0)
         + (s.sableSlot === id ? (id === "latias-sable" ? s.sableCount : 1) : 0)
+        + (s.sableSlot2 === id ? (id === "latias-sable" ? s.sableCount2 : 1) : 0)
         + (s.carryoverSlot === id ? 1 : 0)
     }, 0)
   }
@@ -468,9 +478,18 @@ const [dragId, setDragId] = useState<string | null>(null)
       const POKEMON_LATIAS = new Set(["pokemon", "latias"])
       if (POKEMON_LATIAS.has(dragId) && other && POKEMON_LATIAS.has(other)) return
     }
+    if (slot === "slot3" || slot === "slot4") {
+      if (!isIncenseItem(dragId)) return
+      if (!slots.splitSleep) return
+      const other = slot === "slot3" ? slots.slot4 : slots.slot3
+      if (other === dragId) return
+      const POKEMON_LATIAS = new Set(["pokemon", "latias"])
+      if (POKEMON_LATIAS.has(dragId) && other && POKEMON_LATIAS.has(other)) return
+    }
     if (slot === "mondaySlot"    && dragId !== "help-whistle") return
     if (slot === "campSlot"      && dragId !== "good-camp")    return
     if (slot === "sableSlot"     && dragId !== "master-sable" && dragId !== "latias-sable") return
+    if (slot === "sableSlot2"    && dragId !== "master-sable" && dragId !== "latias-sable") return
     if (slot === "carryoverSlot" && dragId !== "latias") return
     if (slot === "carryoverSlot" && dayIndex !== 13) return
 
@@ -480,22 +499,27 @@ const [dragId, setDragId] = useState<string | null>(null)
 
     setDaySlots(prev => {
       let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: dragId } }
-      // slot1/slot2 に latias 以外をドロップして latias が消えた場合、sableSlot を強制クリア
-      if (slot === "slot1" || slot === "slot2") {
+      // latias が全スロットから消えた場合、sableSlot を強制クリア
+      if (slot === "slot1" || slot === "slot2" || slot === "slot3" || slot === "slot4") {
         const day = next[dayIndex]
         if (day.slot1 !== "latias" && day.slot2 !== "latias" && day.sableSlot) {
-          next = { ...next, [dayIndex]: { ...day, sableSlot: null, sableCount: 1 } }
+          next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot: null, sableCount: 1 } }
+        }
+        if (day.slot3 !== "latias" && day.slot4 !== "latias" && day.sableSlot2) {
+          next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot2: null, sableCount2: 1 } }
         }
       }
       // 移動元スロットをクリア
       if (dragSource) {
         const srcDay = next[dragSource.dayIndex]
         let srcUpdate: Partial<DaySlots> = { [dragSource.slot]: null }
-        // 移動元で latias が消えた場合も sableSlot をクリア
-        if (dragSource.slot === "slot1" || dragSource.slot === "slot2") {
+        if (dragSource.slot === "slot1" || dragSource.slot === "slot2" || dragSource.slot === "slot3" || dragSource.slot === "slot4") {
           const afterSrc = { ...srcDay, [dragSource.slot]: null }
           if (afterSrc.slot1 !== "latias" && afterSrc.slot2 !== "latias" && srcDay.sableSlot) {
             srcUpdate = { ...srcUpdate, sableSlot: null, sableCount: 1 }
+          }
+          if (afterSrc.slot3 !== "latias" && afterSrc.slot4 !== "latias" && srcDay.sableSlot2) {
+            srcUpdate = { ...srcUpdate, sableSlot2: null, sableCount2: 1 }
           }
         }
         next = { ...next, [dragSource.dayIndex]: { ...srcDay, ...srcUpdate } }
@@ -553,9 +577,18 @@ const [dragId, setDragId] = useState<string | null>(null)
       const POKEMON_LATIAS = new Set(["pokemon", "latias"])
       if (POKEMON_LATIAS.has(id) && other && POKEMON_LATIAS.has(other)) return
     }
+    if (slot === "slot3" || slot === "slot4") {
+      if (!isIncenseItem(id)) return
+      if (!slots.splitSleep) return
+      const other = slot === "slot3" ? slots.slot4 : slots.slot3
+      if (other === id) return
+      const POKEMON_LATIAS = new Set(["pokemon", "latias"])
+      if (POKEMON_LATIAS.has(id) && other && POKEMON_LATIAS.has(other)) return
+    }
     if (slot === "mondaySlot"    && id !== "help-whistle") return
     if (slot === "campSlot"      && id !== "good-camp")    return
     if (slot === "sableSlot"     && id !== "master-sable" && id !== "latias-sable") return
+    if (slot === "sableSlot2"    && id !== "master-sable" && id !== "latias-sable") return
     if (slot === "carryoverSlot" && id !== "latias") return
     if (slot === "carryoverSlot" && dayIndex !== 13) return
 
@@ -564,20 +597,25 @@ const [dragId, setDragId] = useState<string | null>(null)
 
     setDaySlots(prev => {
       let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: id } }
-      // slot1/slot2 に latias 以外を置いて latias が消えた場合、sableSlot を強制クリア
-      if (slot === "slot1" || slot === "slot2") {
+      if (slot === "slot1" || slot === "slot2" || slot === "slot3" || slot === "slot4") {
         const day = next[dayIndex]
         if (day.slot1 !== "latias" && day.slot2 !== "latias" && day.sableSlot) {
-          next = { ...next, [dayIndex]: { ...day, sableSlot: null, sableCount: 1 } }
+          next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot: null, sableCount: 1 } }
+        }
+        if (day.slot3 !== "latias" && day.slot4 !== "latias" && day.sableSlot2) {
+          next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot2: null, sableCount2: 1 } }
         }
       }
       if (tapSource) {
         const srcDay = next[tapSource.dayIndex]
         let srcUpdate: Partial<DaySlots> = { [tapSource.slot]: null }
-        if (tapSource.slot === "slot1" || tapSource.slot === "slot2") {
+        if (tapSource.slot === "slot1" || tapSource.slot === "slot2" || tapSource.slot === "slot3" || tapSource.slot === "slot4") {
           const afterSrc = { ...srcDay, [tapSource.slot]: null }
           if (afterSrc.slot1 !== "latias" && afterSrc.slot2 !== "latias" && srcDay.sableSlot) {
             srcUpdate = { ...srcUpdate, sableSlot: null, sableCount: 1 }
+          }
+          if (afterSrc.slot3 !== "latias" && afterSrc.slot4 !== "latias" && srcDay.sableSlot2) {
+            srcUpdate = { ...srcUpdate, sableSlot2: null, sableCount2: 1 }
           }
         }
         next = { ...next, [tapSource.dayIndex]: { ...srcDay, ...srcUpdate } }
@@ -596,12 +634,14 @@ const [dragId, setDragId] = useState<string | null>(null)
   function clearSlot(dayIndex: number, slot: keyof DaySlots) {
     setDaySlots(prev => {
       const day = prev[dayIndex]
-      // slot1/slot2 から latias を外したとき、もう一方にも latias がなければ sableSlot を強制クリア
-      const clearingLatias =
-        (slot === "slot1" && day.slot1 === "latias") ||
-        (slot === "slot2" && day.slot2 === "latias")
-      const otherSlotHasLatias = slot === "slot1" ? day.slot2 === "latias" : day.slot1 === "latias"
-      const shouldClearSable = clearingLatias && !otherSlotHasLatias
+      // slot1/slot2 から latias を外してもう一方にもなければ sableSlot をクリア
+      const clearing1 = (slot === "slot1" && day.slot1 === "latias") || (slot === "slot2" && day.slot2 === "latias")
+      const remaining1 = (slot !== "slot1" && day.slot1 === "latias") || (slot !== "slot2" && day.slot2 === "latias")
+      const shouldClearSable1 = clearing1 && !remaining1
+      // slot3/slot4 から latias を外してもう一方にもなければ sableSlot2 をクリア
+      const clearing2 = (slot === "slot3" && day.slot3 === "latias") || (slot === "slot4" && day.slot4 === "latias")
+      const remaining2 = (slot !== "slot3" && day.slot3 === "latias") || (slot !== "slot4" && day.slot4 === "latias")
+      const shouldClearSable2 = clearing2 && !remaining2
       return {
         ...prev,
         [dayIndex]: {
@@ -609,7 +649,9 @@ const [dragId, setDragId] = useState<string | null>(null)
           [slot]: null,
           ...(slot === "mondaySlot" ? { mondayWhistleCount: 1 } : {}),
           ...(slot === "sableSlot" ? { sableCount: 1 } : {}),
-          ...(shouldClearSable ? { sableSlot: null, sableCount: 1 } : {}),
+          ...(slot === "sableSlot2" ? { sableCount2: 1 } : {}),
+          ...(shouldClearSable1 ? { sableSlot: null, sableCount: 1 } : {}),
+          ...(shouldClearSable2 ? { sableSlot2: null, sableCount2: 1 } : {}),
         },
       }
     })
@@ -621,10 +663,25 @@ const [dragId, setDragId] = useState<string | null>(null)
       if (s.sableSlot !== "latias-sable") return prev
       const otherUsed = Object.entries(prev)
         .filter(([di]) => Number(di) !== dayIndex)
-        .reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0), 0)
-      const max = (inventory["latias-sable"] ?? 0) - otherUsed
+        .reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
+      const selfOther = s.sableSlot2 === "latias-sable" ? s.sableCount2 : 0
+      const max = (inventory["latias-sable"] ?? 0) - otherUsed - selfOther
       const newCount = Math.max(1, Math.min(max, value))
       return { ...prev, [dayIndex]: { ...s, sableCount: newCount } }
+    })
+  }
+
+  function changeSableCount2(dayIndex: number, value: number) {
+    setDaySlots(prev => {
+      const s = prev[dayIndex]
+      if (s.sableSlot2 !== "latias-sable") return prev
+      const otherUsed = Object.entries(prev)
+        .filter(([di]) => Number(di) !== dayIndex)
+        .reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
+      const selfOther = s.sableSlot === "latias-sable" ? s.sableCount : 0
+      const max = (inventory["latias-sable"] ?? 0) - otherUsed - selfOther
+      const newCount = Math.max(1, Math.min(max, value))
+      return { ...prev, [dayIndex]: { ...s, sableCount2: newCount } }
     })
   }
 
@@ -818,11 +875,22 @@ const [dragId, setDragId] = useState<string | null>(null)
                 })()}
                 onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
                 sableMax={(() => {
-                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0), 0)
-                  return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed)
+                  const s = daySlots[day.dayIndex]
+                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
+                  return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed - (s.sableSlot2 === "latias-sable" ? s.sableCount2 : 0))
+                })()}
+                onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
+                sableMax2={(() => {
+                  const s = daySlots[day.dayIndex]
+                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
+                  return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed - (s.sableSlot === "latias-sable" ? s.sableCount : 0))
                 })()}
                 cumulativeUmou={umouCumulative[day.dayIndex] ?? 0}
                 todayDayIndex={todayDayIndex}
+                onToggleSplitSleep={() => setDaySlots(prev => ({
+                  ...prev,
+                  [day.dayIndex]: { ...prev[day.dayIndex], splitSleep: !prev[day.dayIndex].splitSleep, slot3: null, slot4: null }
+                }))}
               />
             ))}
           </div>
@@ -858,11 +926,22 @@ const [dragId, setDragId] = useState<string | null>(null)
               })()}
               onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
               sableMax={(() => {
-                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0), 0)
-                return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed)
+                const s = daySlots[day.dayIndex]
+                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
+                return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed - (s.sableSlot2 === "latias-sable" ? s.sableCount2 : 0))
+              })()}
+              onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
+              sableMax2={(() => {
+                const s = daySlots[day.dayIndex]
+                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
+                return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed - (s.sableSlot === "latias-sable" ? s.sableCount : 0))
               })()}
               cumulativeUmou={umouCumulative[day.dayIndex] ?? 0}
               todayDayIndex={todayDayIndex}
+              onToggleSplitSleep={() => setDaySlots(prev => ({
+                ...prev,
+                [day.dayIndex]: { ...prev[day.dayIndex], splitSleep: !prev[day.dayIndex].splitSleep, slot3: null, slot4: null }
+              }))}
             />
           ))}
         </div>
@@ -939,13 +1018,18 @@ interface DayCellProps {
   whistleMax: number
   onSableCountChange: (value: number) => void
   sableMax: number
+  onSableCountChange2: (value: number) => void
+  sableMax2: number
   cumulativeUmou: number
   todayDayIndex: number
+  onToggleSplitSleep: () => void
 }
 
 /** 汎用アイテムスロット */
 function ItemSlot({
-  itemId, isOver, isTapTarget, isTapSelected, hasTapSelected, label, bgImageUrls, monday = false, onDrop, onTap, onTapItem, onClear, onDragFromSlot,
+  itemId, isOver, isTapTarget, isTapSelected, hasTapSelected, label, bgImageUrls, monday = false,
+  count, maxCount, onCountChange,
+  onDrop, onTap, onTapItem, onClear, onDragFromSlot,
 }: {
   itemId: string | null
   isOver: boolean
@@ -955,6 +1039,9 @@ function ItemSlot({
   label?: string
   bgImageUrls?: string[]
   monday?: boolean
+  count?: number
+  maxCount?: number
+  onCountChange?: (value: number) => void
   onDrop: () => void
   onTap: () => void
   onTapItem?: () => void
@@ -963,11 +1050,13 @@ function ItemSlot({
 }) {
   const [localOver, setLocalOver] = useState(false)
   const item = itemId ? getIncenseById(itemId) : null
+  const showCounter = !!item && count !== undefined && onCountChange !== undefined
 
   return (
     <div
       className={cn(
-        "relative flex flex-col items-center justify-center rounded border transition-all w-10 h-10 shrink-0",
+        "relative flex flex-col items-center justify-center rounded border transition-all w-10 shrink-0",
+        showCounter ? "h-12" : "h-10",
         item
           ? isTapSelected
             ? "bg-blue-100 border-blue-400 ring-2 ring-blue-300"
@@ -989,17 +1078,11 @@ function ItemSlot({
       onDrop={() => { setLocalOver(false); onDrop() }}
       onClick={() => { if (item) { if (hasTapSelected) onTap(); else onTapItem?.() } else onTap() }}
     >
-      {/* 空スロット時の薄い背景画像（複数ある場合は左右に並べる） */}
+      {/* 空スロット時の薄い背景画像 */}
       {!item && bgImageUrls && bgImageUrls.length > 0 && (
         <div className="absolute inset-0 flex">
           {bgImageUrls.map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt=""
-              className="flex-1 object-contain p-0.5 opacity-20"
-              draggable={false}
-            />
+            <img key={i} src={url} alt="" className="flex-1 object-contain p-0.5 opacity-20" draggable={false} />
           ))}
         </div>
       )}
@@ -1008,13 +1091,33 @@ function ItemSlot({
         <>
           <img
             src={item.imageUrl} alt={item.name}
-            className={cn("w-full h-full object-contain p-0.5", onDragFromSlot && "cursor-grab active:cursor-grabbing")}
+            className={cn(
+              "object-contain p-0.5",
+              showCounter ? "w-full h-7" : "w-full h-full",
+              onDragFromSlot && "cursor-grab active:cursor-grabbing"
+            )}
             draggable={!!onDragFromSlot}
             onDragStart={onDragFromSlot}
           />
-          <button onClick={(e) => { e.stopPropagation(); onClear() }} className="absolute -top-2 -right-2 z-20 w-4 h-4 rounded-full bg-white border border-gray-300 flex items-center justify-center text-gray-400 hover:text-red-500 text-xs">
-            <X className="w-1.5 h-1.5" />
-          </button>
+          {/* 個数カウンター（スロット内下部） */}
+          {showCounter && (
+            <div className="flex items-center w-full px-0.5" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => onCountChange!(Math.max(1, count! - 1))}
+                className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-gray-400 hover:text-red-400 leading-none"
+              >−</button>
+              <span className="flex-1 text-center text-[8px] font-bold text-gray-600">{count}</span>
+              <button
+                onClick={() => onCountChange!(Math.min(maxCount ?? 99, count! + 1))}
+                className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-gray-400 hover:text-blue-400 leading-none"
+              >+</button>
+            </div>
+          )}
+          {/* 削除ボタン（右上角） */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onClear() }}
+            className="absolute top-0 right-0 w-3.5 h-3.5 flex items-center justify-center text-[10px] text-gray-400 hover:text-red-400 leading-none"
+          >−</button>
         </>
       ) : label ? (
         <span className={cn("relative text-[7px] leading-tight text-center px-0.5 whitespace-pre-line", localOver ? "text-blue-500" : monday ? "text-amber-500" : "text-gray-300")}>{localOver ? "↓" : label}</span>
@@ -1028,13 +1131,11 @@ function ItemSlot({
 function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
-  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax, cumulativeUmou, todayDayIndex,
+  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax, onSableCountChange2, sableMax2, cumulativeUmou, todayDayIndex, onToggleSplitSleep,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
   const isMonday = day.dayOfWeek === "月"
-  const hasLatias = slots.slot1 === "latias" || slots.slot2 === "latias"
-
   // ドラッグ中のアイテムがこのスロットに入れるかどうか
   const dragIsIncense = dragId ? isIncenseItem(dragId) : false
 
@@ -1053,9 +1154,27 @@ function DayCell({
     >
       {/* 日付 */}
       <div className="flex items-center justify-between mb-1">
-        <span className={cn("text-xs font-bold", isSun && "text-rose-500", isSat && "text-sky-600", !isSat && !isSun && "text-gray-700")}>
-          {day.date}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className={cn("text-xs font-bold", isSun && "text-rose-500", isSat && "text-sky-600", !isSat && !isSun && "text-gray-700")}>
+            {day.date}
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSplitSleep() }}
+            className="flex items-center gap-0.5"
+            title="分割睡眠"
+          >
+            <span className={cn("text-[7px] font-medium", slots.splitSleep ? "text-blue-500" : "text-gray-400")}>分割睡眠</span>
+            <span className={cn(
+              "relative w-6 h-3.5 rounded-full transition-colors duration-200 shrink-0",
+              slots.splitSleep ? "bg-blue-500" : "bg-gray-400"
+            )}>
+              <span className={cn(
+                "absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow transition-all duration-200",
+                slots.splitSleep ? "left-3" : "left-0.5"
+              )} />
+            </span>
+          </button>
+        </div>
         {cumulativeUmou > 0 && <span className="text-[8px] text-purple-600 font-semibold">累計🪶: {cumulativeUmou}</span>}
       </div>
 
@@ -1085,60 +1204,80 @@ function DayCell({
               onDragFromSlot={slots.slot2 ? (e) => onDragFromSlot("slot2", slots.slot2!, e) : undefined}
             />
             {/* サブレスロット（ラティアス配置時のみ・マスターサブレorラティアスサブレ排他） */}
-            {hasLatias && (
-              <div className="flex flex-col items-center gap-0.5">
-                <ItemSlot
-                  itemId={slots.sableSlot}
-                  isOver={isDragOver && (dragId === "master-sable" || dragId === "latias-sable") && !slots.sableSlot}
-                  isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === "latias-sable") && !slots.sableSlot}
-                  isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
-                  hasTapSelected={!!tapSelectedId}
-                  bgImageUrls={["/img/poke_sable.png"]}
-                  onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined} onClear={() => onClearSlot("sableSlot")}
-                  onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
-                />
-                <select
-                  value={slots.sableCount}
-                  onChange={(e) => onSableCountChange(Number(e.target.value))}
-                  onClick={(e) => e.stopPropagation()}
-                  className={cn("w-10 text-[9px] font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded py-0.5 focus:outline-none focus:border-blue-400", slots.sableSlot !== "latias-sable" && "invisible")}
-                  style={{ textAlignLast: "center" }}
-                >
-                  {Array.from({ length: sableMax }, (_, i) => (
-                    <option key={i + 1} value={i + 1}>{i + 1}</option>
-                  ))}
-                </select>
-              </div>
+            {(slots.slot1 === "latias" || slots.slot2 === "latias") && (
+              <ItemSlot
+                itemId={slots.sableSlot}
+                isOver={isDragOver && (dragId === "master-sable" || dragId === "latias-sable") && !slots.sableSlot}
+                isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === "latias-sable") && !slots.sableSlot}
+                isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
+                hasTapSelected={!!tapSelectedId}
+                bgImageUrls={["/img/poke_sable.png"]}
+                count={slots.sableSlot === "latias-sable" ? slots.sableCount : undefined}
+                maxCount={sableMax}
+                onCountChange={slots.sableSlot === "latias-sable" ? onSableCountChange : undefined}
+                onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined} onClear={() => onClearSlot("sableSlot")}
+                onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
+              />
             )}
           </div>
+
+          {/* 分割睡眠 2回目スロット */}
+          {slots.splitSleep && (
+            <div className="flex gap-0.5">
+              <ItemSlot
+                itemId={slots.slot3} isOver={isDragOver && dragIsIncense && !slots.slot3}
+                isTapTarget={!!tapSelectedId && !slots.slot3}
+                isTapSelected={tapSelectedId === slots.slot3 && !!slots.slot3}
+                hasTapSelected={!!tapSelectedId}
+                bgImageUrls={["/img/okou_normal.png"]}
+                onDrop={() => onDropSlot("slot3")} onTap={() => onTapSlot("slot3")} onTapItem={slots.slot3 ? () => onTapFromSlot("slot3", slots.slot3!) : undefined} onClear={() => onClearSlot("slot3")}
+                onDragFromSlot={slots.slot3 ? (e) => onDragFromSlot("slot3", slots.slot3!, e) : undefined}
+              />
+              <ItemSlot
+                itemId={slots.slot4} isOver={isDragOver && dragIsIncense && !!slots.slot3 && !slots.slot4}
+                isTapTarget={!!tapSelectedId && !!slots.slot3 && !slots.slot4}
+                isTapSelected={tapSelectedId === slots.slot4 && !!slots.slot4}
+                hasTapSelected={!!tapSelectedId}
+                bgImageUrls={["/img/okou_normal.png"]}
+                onDrop={() => onDropSlot("slot4")} onTap={() => onTapSlot("slot4")} onTapItem={slots.slot4 ? () => onTapFromSlot("slot4", slots.slot4!) : undefined} onClear={() => onClearSlot("slot4")}
+                onDragFromSlot={slots.slot4 ? (e) => onDragFromSlot("slot4", slots.slot4!, e) : undefined}
+              />
+              {/* 2回目睡眠用サブレスロット（slot3/slot4 にラティアスがある場合） */}
+              {(slots.slot3 === "latias" || slots.slot4 === "latias") && (
+                <ItemSlot
+                  itemId={slots.sableSlot2}
+                  isOver={isDragOver && (dragId === "master-sable" || dragId === "latias-sable") && !slots.sableSlot2}
+                  isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === "latias-sable") && !slots.sableSlot2}
+                  isTapSelected={tapSelectedId === slots.sableSlot2 && !!slots.sableSlot2}
+                  hasTapSelected={!!tapSelectedId}
+                  bgImageUrls={["/img/poke_sable.png"]}
+                  count={slots.sableSlot2 === "latias-sable" ? slots.sableCount2 : undefined}
+                  maxCount={sableMax2}
+                  onCountChange={slots.sableSlot2 === "latias-sable" ? onSableCountChange2 : undefined}
+                  onDrop={() => onDropSlot("sableSlot2")} onTap={() => onTapSlot("sableSlot2")} onTapItem={slots.sableSlot2 ? () => onTapFromSlot("sableSlot2", slots.sableSlot2!) : undefined} onClear={() => onClearSlot("sableSlot2")}
+                  onDragFromSlot={slots.sableSlot2 ? (e) => onDragFromSlot("sableSlot2", slots.sableSlot2!, e) : undefined}
+                />
+              )}
+            </div>
+          )}
 
           {/* 月曜専用スロット */}
           {isMonday && (
             <div className="flex gap-0.5">
-              <div className="flex flex-col items-center gap-0.5">
-                <ItemSlot
-                  itemId={slots.mondaySlot}
-                  isOver={isDragOver && dragId === "help-whistle" && !slots.mondaySlot}
-                  isTapTarget={tapSelectedId === "help-whistle" && !slots.mondaySlot}
-                  isTapSelected={tapSelectedId === slots.mondaySlot && !!slots.mondaySlot}
-                  hasTapSelected={!!tapSelectedId}
-                  monday
-                  bgImageUrls={[getIncenseById("help-whistle")?.imageUrl ?? ""]}
-                  onDrop={() => onDropSlot("mondaySlot")} onTap={() => onTapSlot("mondaySlot")} onTapItem={slots.mondaySlot ? () => onTapFromSlot("mondaySlot", slots.mondaySlot!) : undefined} onClear={() => onClearSlot("mondaySlot")}
-                  onDragFromSlot={slots.mondaySlot ? (e) => onDragFromSlot("mondaySlot", slots.mondaySlot!, e) : undefined}
-                />
-                <select
-                  value={slots.mondayWhistleCount}
-                  onChange={(e) => onWhistleCountChange(Number(e.target.value))}
-                  onClick={(e) => e.stopPropagation()}
-                  className={cn("w-10 text-[9px] font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded py-0.5 focus:outline-none focus:border-blue-400", slots.mondaySlot !== "help-whistle" && "invisible")}
-                  style={{ textAlignLast: "center" }}
-                >
-                  {Array.from({ length: whistleMax }, (_, i) => (
-                    <option key={i + 1} value={i + 1}>{i + 1}</option>
-                  ))}
-                </select>
-              </div>
+              <ItemSlot
+                itemId={slots.mondaySlot}
+                isOver={isDragOver && dragId === "help-whistle" && !slots.mondaySlot}
+                isTapTarget={tapSelectedId === "help-whistle" && !slots.mondaySlot}
+                isTapSelected={tapSelectedId === slots.mondaySlot && !!slots.mondaySlot}
+                hasTapSelected={!!tapSelectedId}
+                monday
+                bgImageUrls={[getIncenseById("help-whistle")?.imageUrl ?? ""]}
+                count={slots.mondaySlot === "help-whistle" ? slots.mondayWhistleCount : undefined}
+                maxCount={whistleMax}
+                onCountChange={slots.mondaySlot === "help-whistle" ? onWhistleCountChange : undefined}
+                onDrop={() => onDropSlot("mondaySlot")} onTap={() => onTapSlot("mondaySlot")} onTapItem={slots.mondaySlot ? () => onTapFromSlot("mondaySlot", slots.mondaySlot!) : undefined} onClear={() => onClearSlot("mondaySlot")}
+                onDragFromSlot={slots.mondaySlot ? (e) => onDragFromSlot("mondaySlot", slots.mondaySlot!, e) : undefined}
+              />
               <ItemSlot
                 itemId={slots.campSlot}
                 isOver={isDragOver && dragId === "good-camp" && !slots.campSlot}
