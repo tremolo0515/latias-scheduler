@@ -196,6 +196,38 @@ export const INCENSE_MASTERS: IncenseMaster[] = [
     preferEarlyWeek: false,
     spreadEvenly: false,
   },
+  // ─── ラティオスイベント用アイテム ────────────────────────────
+  {
+    id: "latios",
+    name: "ラティオスのおこう",
+    maxStock: 11,
+    icon: "🔵",
+    imageUrl: "/img/okou_latios.png",
+    effectType: "pokemon",
+    effectShort: "ラティオス出現",
+    effectDetail: "ラティオスが追加枠として出現する。こううんのおこうと組み合わせて大量のゆめのかけらを狙える。",
+    color: "bg-blue-500/20 text-blue-300 border-blue-500/40",
+    preferWeekend: true,
+    preferLate: false,
+    preferEarlyWeek: false,
+    spreadEvenly: false,
+  },
+  {
+    id: "latios-sable",
+    name: "ラティアス/ラティオスサブレ",
+    maxStock: 15,
+    icon: "🍪",
+    imageUrl: "/img/latios_sable.png",
+    effectType: "treat",
+    effectShort: "ラティオスに使うおやつ（複数可）",
+    effectDetail: "ラティオスのおこうと同時に設置して使用。マスターサブレと排他的に使用。個数を指定できる。",
+    color: "bg-blue-500/20 text-blue-300 border-blue-500/40",
+    pairedWith: "latios",
+    preferWeekend: true,
+    preferLate: false,
+    preferEarlyWeek: false,
+    spreadEvenly: false,
+  },
 ]
 
 export function getIncenseById(id: string): IncenseMaster | undefined {

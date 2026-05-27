@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
-import { Sparkles, X } from "lucide-react"
+import { Sparkles, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { INCENSE_MASTERS, getIncenseById, type IncenseMaster } from "@/lib/data/items"
+import { INCENSE_MASTERS, getIncenseById } from "@/lib/data/items"
+import { EVENTS, buildEventDays, type PokeSleepEvent, type UmouPriceTable } from "@/lib/data/events"
+import type { DayInfo } from "@/lib/types/calendar"
 
 // ─── 型定義 ────────────────────────────────────────────────
 
@@ -41,120 +43,22 @@ interface DaySlots {
   carryoverSlot: string | null   // 最終日のみ / ラティアスのおこう持ち越し専用
 }
 
-interface DayInfo {
-  date: number
-  dayOfWeek: "月" | "火" | "水" | "木" | "金" | "土" | "日"
-  dayIndex: number  // 0〜13
-  isToday: boolean
-  isWeekend: boolean
-  isFriday: boolean
-  isEarlyWeek: boolean  // 月〜水
-  isLate: boolean       // 8日目以降
-}
-
-// ─── 定数 ──────────────────────────────────────────────────
-
-const EVENT_DAYS: DayInfo[] = [
-  { date: 6,  dayOfWeek: "月", dayIndex: 0,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: true,  isLate: false },
-  { date: 7,  dayOfWeek: "火", dayIndex: 1,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: true,  isLate: false },
-  { date: 8,  dayOfWeek: "水", dayIndex: 2,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: true,  isLate: false },
-  { date: 9,  dayOfWeek: "木", dayIndex: 3,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: false, isLate: false },
-  { date: 10, dayOfWeek: "金", dayIndex: 4,  isToday: false, isWeekend: false, isFriday: true,  isEarlyWeek: false, isLate: false },
-  { date: 11, dayOfWeek: "土", dayIndex: 5,  isToday: false, isWeekend: true,  isFriday: false, isEarlyWeek: false, isLate: false },
-  { date: 12, dayOfWeek: "日", dayIndex: 6,  isToday: false, isWeekend: true,  isFriday: false, isEarlyWeek: false, isLate: false },
-  { date: 13, dayOfWeek: "月", dayIndex: 7,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: true,  isLate: true  },
-  { date: 14, dayOfWeek: "火", dayIndex: 8,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: true,  isLate: true  },
-  { date: 15, dayOfWeek: "水", dayIndex: 9,  isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: true,  isLate: true  },
-  { date: 16, dayOfWeek: "木", dayIndex: 10, isToday: false, isWeekend: false, isFriday: false, isEarlyWeek: false, isLate: true  },
-  { date: 17, dayOfWeek: "金", dayIndex: 11, isToday: false, isWeekend: false, isFriday: true,  isEarlyWeek: false, isLate: true  },
-  { date: 18, dayOfWeek: "土", dayIndex: 12, isToday: false, isWeekend: true,  isFriday: false, isEarlyWeek: false, isLate: true  },
-  { date: 19, dayOfWeek: "日", dayIndex: 13, isToday: false, isWeekend: true,  isFriday: false, isEarlyWeek: false, isLate: true  },
-]
-
-// ─── カレンダーイベントバー定義 ────────────────────────────
-
-interface CalendarEvent {
-  id: string
-  name: string
-  /** グリッド列 start（1始まり） */
-  colStart: number
-  /** 何列分スパンするか */
-  colSpan: number
-  /** 属する週（0 = 第1週, 1 = 第2週） */
-  week: number
-  barColor: string
-  textColor: string
-  effects: { label: string; note?: string }[]
-}
-
-const CALENDAR_EVENTS: CalendarEvent[] = [
-  {
-    id: "latias-w1",
-    name: "ラティアスリサーチ（第1週）",
-    colStart: 1, colSpan: 7, week: 0,
-    barColor: "bg-red-700/70 hover:bg-red-700/80",
-    textColor: "text-blue-100",
-    effects: [
-      { label: "他の睡眠タイプのポケモン出現" },
-      { label: "ピックアップポケモン出現確率UP" },
-      { label: "スキルとくい強化", note: "食材+1,メインスキル確率1.25倍,最大所持数+8,メインスキルレベル+2" },
-    ],
-  },
-  {
-    id: "latias-w2",
-    name: "ラティアスリサーチ（第2週）",
-    colStart: 1, colSpan: 7, week: 1,
-    barColor: "bg-red-700/70 hover:bg-red-700/80",
-    textColor: "text-indigo-100",
-    effects: [
-      { label: "他の睡眠タイプのポケモン出現" },
-      { label: "ピックアップポケモン出現確率UP" },
-      { label: "スキルとくい強化", note: "食材+1,きのみ+1,メインスキル確率1.25倍,最大所持数+15,メインスキルレベル+5" },
-      { label: "一定エナジーからカビゴン育成開始" },
-      { label: "ねむけパワー1.5倍(4/19)"},
-    ],
-  },
-  {
-    id: "newmoon",
-    name: "ニュームーンデー",
-    colStart: 4, colSpan: 3, week: 1,  // 4/16(木)〜4/18(土)
-    barColor: "bg-indigo-700/70 hover:bg-indigo-600/80",
-    textColor: "text-indigo-100",
-    effects: [
-      { label: "幻のポケモン出現" },
-      { label: "満腹になりづらい", },
-      { label: "色違い出現確率UP" },
-    ],
-  },
-]
-
 const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, slot3: null, slot4: null, splitSleep: false, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null, sableCount: 1, sableSlot2: null, sableCount2: 1, carryoverSlot: null })
 
 // ─── うもう必要数計算 ─────────────────────────────────────────
 /**
- * ラティアスのおこう n 個 + ラティアスサブレ m 個を
- * 最小うもうで入手するためのコストを返す。
- * - ラティアスサブレは1個が無料配布（0コスト）
- * - week2Available: 2週目月曜（dayIndex>=7）以降は在庫が追加される
- *
- * 在庫と単価（安い順に購入）:
- *   おこう W1: [2@80, 7@160]  W2追加: [2@70]
- *   サブレ W1: [2@60, 10@120] W2追加: [2@50]
+ * おこう n 個 + サブレ m 個を最小うもうで入手するためのコストを返す。
+ * イベント定義の UmouPriceTable を使用（汎用版）。
  */
-/**
- * W1購入分はW1在庫のみ使用。
- * W2購入分はW2新規在庫 + W1残在庫（安い順）から購入。
- *
- *   おこう W1在庫: [2@80, 7@160]  W2新規: [2@70]
- *   サブレ W1在庫: [2@60, 10@120] W2新規: [2@50]
- *   サブレは1個が無料配布（先頭1個を0円扱い）
- */
-function calcUmou(nOkouW1: number, nOkouW2: number, nSableW1: number, nSableW2: number): number {
+function calcUmou(
+  nOkouW1: number, nOkouW2: number,
+  nSableW1: number, nSableW2: number,
+  prices: UmouPriceTable
+): number {
   let cost = 0
 
   // ── おこう ──
-  const okouW1Stock: [number, number][] = [[2, 80], [7, 160]]
-  // W1購入分 → W1在庫から順に
+  const okouW1Stock: [number, number][] = prices.okouW1.map(([s, p]) => [s, p])
   let rem = nOkouW1
   for (const lot of okouW1Stock) {
     const buy = Math.min(rem, lot[0])
@@ -163,10 +67,9 @@ function calcUmou(nOkouW1: number, nOkouW2: number, nSableW1: number, nSableW2: 
     rem -= buy
     if (rem <= 0) break
   }
-  // W2購入分 → W2新規在庫 + W1残在庫（安い順）
   if (nOkouW2 > 0) {
-    const w2Available = ([[2, 70] as [number, number]].concat(
-      okouW1Stock.filter(([s]) => s > 0) as [number, number][]
+    const w2Available = ([...prices.okouW2.map(([s, p]) => [s, p] as [number, number])].concat(
+      okouW1Stock.filter(([s]) => s > 0)
     )).sort((a, b) => a[1] - b[1])
     rem = nOkouW2
     for (const [stock, price] of w2Available) {
@@ -178,12 +81,11 @@ function calcUmou(nOkouW1: number, nOkouW2: number, nSableW1: number, nSableW2: 
   }
 
   // ── サブレ ──
-  // 無料配布1個: W1に1個以上あればW1の先頭1個が無料、なければW2の先頭1個が無料
-  const sableW1Paid = nSableW1 >= 1 ? nSableW1 - 1 : 0
-  const sableW2Paid = nSableW1 >= 1 ? nSableW2 : Math.max(0, nSableW2 - 1)
+  const free = prices.sableFreeCount
+  const sableW1Paid = nSableW1 >= free ? nSableW1 - free : 0
+  const sableW2Paid = nSableW1 >= free ? nSableW2 : Math.max(0, nSableW2 - (free - nSableW1))
 
-  const sableW1Stock: [number, number][] = [[2, 60], [10, 120]]
-  // W1購入分 → W1在庫から
+  const sableW1Stock: [number, number][] = prices.sableW1.map(([s, p]) => [s, p])
   rem = sableW1Paid
   for (const lot of sableW1Stock) {
     const buy = Math.min(rem, lot[0])
@@ -192,10 +94,9 @@ function calcUmou(nOkouW1: number, nOkouW2: number, nSableW1: number, nSableW2: 
     rem -= buy
     if (rem <= 0) break
   }
-  // W2購入分 → W2新規在庫 + W1残在庫（安い順）
   if (sableW2Paid > 0) {
-    const w2SableAvailable = ([[2, 50] as [number, number]].concat(
-      sableW1Stock.filter(([s]) => s > 0) as [number, number][]
+    const w2SableAvailable = ([...prices.sableW2.map(([s, p]) => [s, p] as [number, number])].concat(
+      sableW1Stock.filter(([s]) => s > 0)
     )).sort((a, b) => a[1] - b[1])
     rem = sableW2Paid
     for (const [stock, price] of w2SableAvailable) {
@@ -211,23 +112,6 @@ function calcUmou(nOkouW1: number, nOkouW2: number, nSableW1: number, nSableW2: 
 
 // ─── 提案ロジック ──────────────────────────────────────────
 
-/** ニュームーンデーの dayIndex（4/16木・4/17金・4/18土） */
-const NEWMOON_DAYS = new Set([10, 11, 12])
-
-/**
- * 週末から平日へ降順に並べた全14日
- * 土日 → 金 → 木 → 水 → 火 → 月 の順（同曜日は第2週→第1週）
- */
-const DAYS_WEEKEND_FIRST: DayInfo[] = (() => {
-  const order = ["日", "土", "金", "木", "水", "火", "月"]
-  return [...EVENT_DAYS].sort((a, b) => {
-    const ai = order.indexOf(a.dayOfWeek)
-    const bi = order.indexOf(b.dayOfWeek)
-    if (ai !== bi) return ai - bi
-    return b.dayIndex - a.dayIndex  // 同曜日は後半（第2週）優先
-  })
-})()
-
 /** おこうスロット（slot1/slot2）に空きがあれば配置して true を返す */
 function placeIncense(plan: Record<number, DaySlots>, dayIndex: number, id: string): boolean {
   const s = plan[dayIndex]
@@ -237,61 +121,69 @@ function placeIncense(plan: Record<number, DaySlots>, dayIndex: number, id: stri
 }
 
 function generatePlan(
-  inventory: Record<string, number>
+  inventory: Record<string, number>,
+  eventDays: DayInfo[],
+  event: PokeSleepEvent
 ): Record<number, DaySlots> {
+  const specialDays = event.specialDays.specialDayIndices
+  const mainId = event.mainIncenseId
+
   const plan: Record<number, DaySlots> = {}
-  EVENT_DAYS.forEach(d => { plan[d.dayIndex] = EMPTY_SLOTS() })
+  eventDays.forEach(d => { plan[d.dayIndex] = EMPTY_SLOTS() })
 
   const rem = { ...inventory }
 
+  // 週末優先ソート済み配列（各 generatePlan 呼び出しごとに生成）
+  const orderDow = ["日", "土", "金", "木", "水", "火", "月"]
+  const daysWeekendFirst: DayInfo[] = [...eventDays].sort((a, b) => {
+    const ai = orderDow.indexOf(a.dayOfWeek)
+    const bi = orderDow.indexOf(b.dayOfWeek)
+    if (ai !== bi) return ai - bi
+    return b.dayIndex - a.dayIndex
+  })
+
   // ① いいキャンプチケット（月曜固定・上限2枚）
-  const campDays = [0, 7]  // dayIndex: 4/6(月), 4/13(月)
-  for (const di of campDays) {
+  for (const di of event.specialDays.campDayIndices) {
     if ((rem["good-camp"] ?? 0) <= 0) break
     plan[di].campSlot = "good-camp"
     rem["good-camp"]--
   }
 
-  // ② ラティアスのおこう（ニュームーンデー3日目優先 → 週末から順に詰めて配置）
-  const latiasOrder: DayInfo[] = [
-    ...EVENT_DAYS.filter(d => NEWMOON_DAYS.has(d.dayIndex)).sort((a, b) => b.dayIndex - a.dayIndex),
-    ...DAYS_WEEKEND_FIRST.filter(d => !NEWMOON_DAYS.has(d.dayIndex)),
+  // ② メインおこう（特別な日優先 → 週末から順に配置）
+  const mainOrder: DayInfo[] = [
+    ...eventDays.filter(d => specialDays.has(d.dayIndex)).sort((a, b) => b.dayIndex - a.dayIndex),
+    ...daysWeekendFirst.filter(d => !specialDays.has(d.dayIndex)),
   ]
-  const latiasSeen = new Set<number>()
-  for (const day of latiasOrder) {
-    if ((rem["latias"] ?? 0) <= 0) break
-    if (latiasSeen.has(day.dayIndex)) continue
-    latiasSeen.add(day.dayIndex)
+  const mainSeen = new Set<number>()
+  for (const day of mainOrder) {
+    if ((rem[mainId] ?? 0) <= 0) break
+    if (mainSeen.has(day.dayIndex)) continue
+    mainSeen.add(day.dayIndex)
     const s = plan[day.dayIndex]
     if (s.slot1 === "pokemon" || s.slot2 === "pokemon") continue
-    if (placeIncense(plan, day.dayIndex, "latias")) rem["latias"]--
+    if (placeIncense(plan, day.dayIndex, mainId)) rem[mainId]--
   }
 
-  // ③ なかよしのおこう（ラティアス配置日を週末から逆算して優先配置）
-  for (const day of DAYS_WEEKEND_FIRST) {
+  // ③ なかよしのおこう（メインおこう配置日を週末から逆算して優先配置）
+  for (const day of daysWeekendFirst) {
     if ((rem["nakayoshi"] ?? 0) <= 0) break
     const s = plan[day.dayIndex]
-    const hasLatias = s.slot1 === "latias" || s.slot2 === "latias"
-    if (!hasLatias) continue
+    const hasMain = s.slot1 === mainId || s.slot2 === mainId
+    if (!hasMain) continue
     if (placeIncense(plan, day.dayIndex, "nakayoshi")) rem["nakayoshi"]--
   }
 
-  // ④ こううんのおこう
-  //    優先順: ニュームーンデー → 週末 → ラティアス配置日でなかよしが入らなかった日（代替）
+  // ④ こううんのおこう（特別な日 → 週末 → メイン配置でなかよしが入らなかった日 → 残り平日）
   const kouunOrder: DayInfo[] = [
-    // ニュームーンデー（dayIndex昇順）
-    ...EVENT_DAYS.filter(d => NEWMOON_DAYS.has(d.dayIndex)),
-    // 週末（NEWMOON除く）
-    ...DAYS_WEEKEND_FIRST.filter(d => d.isWeekend && !NEWMOON_DAYS.has(d.dayIndex)),
-    // ラティアス配置日でなかよしが入っていない平日のみ代替（週末はなかよし優先のため除外）
-    ...EVENT_DAYS.filter(d => {
+    ...eventDays.filter(d => specialDays.has(d.dayIndex)),
+    ...daysWeekendFirst.filter(d => d.isWeekend && !specialDays.has(d.dayIndex)),
+    ...eventDays.filter(d => {
       const s = plan[d.dayIndex]
-      const hasLatias = s.slot1 === "latias" || s.slot2 === "latias"
+      const hasMain = s.slot1 === mainId || s.slot2 === mainId
       const hasNakayoshi = s.slot1 === "nakayoshi" || s.slot2 === "nakayoshi"
-      return hasLatias && !hasNakayoshi && !d.isWeekend
+      return hasMain && !hasNakayoshi && !d.isWeekend
     }),
-    // 残り平日
-    ...DAYS_WEEKEND_FIRST.filter(d => !d.isWeekend && !NEWMOON_DAYS.has(d.dayIndex)),
+    ...daysWeekendFirst.filter(d => !d.isWeekend && !specialDays.has(d.dayIndex)),
   ]
   const kouunSeen = new Set<number>()
   for (const day of kouunOrder) {
@@ -301,23 +193,23 @@ function generatePlan(
     if (placeIncense(plan, day.dayIndex, "kouun")) rem["kouun"]--
   }
 
-  // ⑤ マスターサブレ（ラティアス配置日の最初の1日のみ）
+  // ⑤ マスターサブレ（メインおこう配置日の最初の1日のみ）
   if ((rem["master-sable"] ?? 0) > 0) {
-    const firstLatiasDay = EVENT_DAYS.find(d => {
+    const firstMainDay = eventDays.find(d => {
       const s = plan[d.dayIndex]
-      return s.slot1 === "latias" || s.slot2 === "latias"
+      return s.slot1 === mainId || s.slot2 === mainId
     })
-    if (firstLatiasDay) {
-      plan[firstLatiasDay.dayIndex].sableSlot = "master-sable"
+    if (firstMainDay) {
+      plan[firstMainDay.dayIndex].sableSlot = "master-sable"
       rem["master-sable"]--
     }
   }
 
-  // ⑥ ポケモンのおこう（ラティアスが入っていない日に週末から詰めて配置）
-  for (const day of DAYS_WEEKEND_FIRST) {
+  // ⑥ ポケモンのおこう（メインおこうが入っていない日に週末から配置）
+  for (const day of daysWeekendFirst) {
     if ((rem["pokemon"] ?? 0) <= 0) break
     const s = plan[day.dayIndex]
-    if (s.slot1 === "latias" || s.slot2 === "latias") continue  // ラティアスの日は除外
+    if (s.slot1 === mainId || s.slot2 === mainId) continue
     if (placeIncense(plan, day.dayIndex, "pokemon")) rem["pokemon"]--
   }
 
@@ -326,51 +218,71 @@ function generatePlan(
 
 // ─── メインコンポーネント ──────────────────────────────────
 
-const LS_INVENTORY = "latias-inventory"
-const LS_SLOTS = "latias-slots"
-const LS_MEMO = "latias-memo"
+/** localStorageキーをイベントIDから生成 */
+function lsKey(eventId: string, suffix: string) {
+  return `${eventId}-${suffix}`
+}
 
 export function EventCalendar() {
-  // 在庫数（incense id → 個数）
+  // ── イベント切り替え ──
+  const [eventIndex, setEventIndex] = useState(EVENTS.length - 1)
+  const currentEvent: PokeSleepEvent = EVENTS[eventIndex]
+  const eventDays: DayInfo[] = buildEventDays(currentEvent)
+  const eventItems = INCENSE_MASTERS.filter(i => currentEvent.itemIds.includes(i.id))
+
+  // ── 在庫数（incense id → 個数）──
   const [inventory, setInventory] = useState<Record<string, number>>(
     () => Object.fromEntries(INCENSE_MASTERS.map(i => [i.id, 0]))
   )
-  // 1日2スロット
+  // ── 1日2スロット ──
   const [daySlots, setDaySlots] = useState<Record<number, DaySlots>>(
-    () => Object.fromEntries(EVENT_DAYS.map(d => [d.dayIndex, EMPTY_SLOTS()]))
+    () => Object.fromEntries(eventDays.map(d => [d.dayIndex, EMPTY_SLOTS()]))
   )
 
-  // mount後にlocalStorageから復元（SSRと初期値を一致させてhydration errorを防ぐ）
+  // mount後 or イベント切り替え時にlocalStorageから復元
   useEffect(() => {
+    const id = currentEvent.id
     try {
-      const inv = localStorage.getItem(LS_INVENTORY)
+      const inv = localStorage.getItem(lsKey(id, "inventory"))
+      setInventory(Object.fromEntries(INCENSE_MASTERS.map(i => [i.id, 0])))
       if (inv) setInventory(prev => ({ ...prev, ...JSON.parse(inv) }))
     } catch {}
     try {
-      const slots = localStorage.getItem(LS_SLOTS)
+      const slots = localStorage.getItem(lsKey(id, "slots"))
+      const empty = Object.fromEntries(eventDays.map(d => [d.dayIndex, EMPTY_SLOTS()]))
       if (slots) {
         const parsed = JSON.parse(slots)
-        setDaySlots(prev => Object.fromEntries(
-          EVENT_DAYS.map(d => [d.dayIndex, { ...prev[d.dayIndex], ...parsed[d.dayIndex] }])
+        setDaySlots(Object.fromEntries(
+          eventDays.map(d => [d.dayIndex, { ...empty[d.dayIndex], ...parsed[d.dayIndex] }])
         ))
+      } else {
+        setDaySlots(empty)
       }
     } catch {}
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEvent.id])
 
   const [memo, setMemo] = useState("")
 
   // mount後にメモ復元
   useEffect(() => {
     try {
-      const m = localStorage.getItem(LS_MEMO)
-      if (m !== null) setMemo(m)
+      const m = localStorage.getItem(lsKey(currentEvent.id, "memo"))
+      setMemo(m ?? "")
     } catch {}
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEvent.id])
 
   // 変更のたびにlocalStorageへ保存
-  useEffect(() => { localStorage.setItem(LS_INVENTORY, JSON.stringify(inventory)) }, [inventory])
-  useEffect(() => { localStorage.setItem(LS_SLOTS, JSON.stringify(daySlots)) }, [daySlots])
-  useEffect(() => { localStorage.setItem(LS_MEMO, memo) }, [memo])
+  useEffect(() => {
+    localStorage.setItem(lsKey(currentEvent.id, "inventory"), JSON.stringify(inventory))
+  }, [inventory, currentEvent.id])
+  useEffect(() => {
+    localStorage.setItem(lsKey(currentEvent.id, "slots"), JSON.stringify(daySlots))
+  }, [daySlots, currentEvent.id])
+  useEffect(() => {
+    localStorage.setItem(lsKey(currentEvent.id, "memo"), memo)
+  }, [memo, currentEvent.id])
 
 const [dragId, setDragId] = useState<string | null>(null)
   const [dragSource, setDragSource] = useState<{ dayIndex: number; slot: keyof DaySlots } | null>(null)
@@ -409,13 +321,16 @@ const [dragId, setDragId] = useState<string | null>(null)
     const result: Record<number, number> = {}
     let nOkouW1 = 0, nOkouW2 = 0
     let nSableW1 = 0, nSableW2 = 0
-    for (const day of EVENT_DAYS) {
+    const mainId = currentEvent.umouPrices.mainIncenseId
+    const sableId = currentEvent.umouPrices.mainSableId
+    for (const day of eventDays) {
       const s = daySlots[day.dayIndex]
-      const okouCount = (s.slot1 === "latias" ? 1 : 0) + (s.slot2 === "latias" ? 1 : 0) + (s.slot3 === "latias" ? 1 : 0) + (s.slot4 === "latias" ? 1 : 0) + (s.carryoverSlot === "latias" ? 1 : 0)
-      const sableCount = (s.sableSlot === "latias-sable" ? s.sableCount : 0) + (s.sableSlot2 === "latias-sable" ? s.sableCount2 : 0)
+      if (!s) continue
+      const okouCount = (s.slot1 === mainId ? 1 : 0) + (s.slot2 === mainId ? 1 : 0) + (s.slot3 === mainId ? 1 : 0) + (s.slot4 === mainId ? 1 : 0) + (s.carryoverSlot === mainId ? 1 : 0)
+      const sableCount = (s.sableSlot === sableId ? s.sableCount : 0) + (s.sableSlot2 === sableId ? s.sableCount2 : 0)
       if (day.dayIndex < 7) { nOkouW1 += okouCount; nSableW1 += sableCount }
       else                  { nOkouW2 += okouCount; nSableW2 += sableCount }
-      result[day.dayIndex] = calcUmou(nOkouW1, nOkouW2, nSableW1, nSableW2)
+      result[day.dayIndex] = calcUmou(nOkouW1, nOkouW2, nSableW1, nSableW2, currentEvent.umouPrices)
     }
     return result
   })()
@@ -424,17 +339,21 @@ const [dragId, setDragId] = useState<string | null>(null)
 
   // 今日の dayIndex（イベント期間外なら -1）
   const todayDayIndex = (() => {
-    const now = new Date()
-    const month = now.getMonth() + 1  // 1-indexed
-    const day   = now.getDate()
-    if (month !== 4) return -1
-    const found = EVENT_DAYS.find(d => d.date === day)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const found = eventDays.find(d => {
+      const dd = new Date(currentEvent.startDate)
+      dd.setDate(dd.getDate() + d.dayIndex)
+      dd.setHours(0, 0, 0, 0)
+      return dd.getTime() === today.getTime()
+    })
     return found ? found.dayIndex : -1
   })()
   // 残り日数（今日含む）
   const remainingDays = todayDayIndex >= 0 ? 14 - todayDayIndex : 0
 
   // 在庫の配置済み合計（全スロット集計）
+  const mainSableId = currentEvent.umouPrices.mainSableId
   function usedCount(id: string): number {
     return Object.values(daySlots).reduce((sum, s) => {
       return sum
@@ -444,19 +363,19 @@ const [dragId, setDragId] = useState<string | null>(null)
         + (s.slot4 === id ? 1 : 0)
         + (s.mondaySlot === id ? (id === "help-whistle" ? s.mondayWhistleCount : 1) : 0)
         + (s.campSlot === id ? 1 : 0)
-        + (s.sableSlot === id ? (id === "latias-sable" ? s.sableCount : 1) : 0)
-        + (s.sableSlot2 === id ? (id === "latias-sable" ? s.sableCount2 : 1) : 0)
+        + (s.sableSlot === id ? (id === mainSableId ? s.sableCount : 1) : 0)
+        + (s.sableSlot2 === id ? (id === mainSableId ? s.sableCount2 : 1) : 0)
         + (s.carryoverSlot === id ? 1 : 0)
     }, 0)
   }
 
   // 提案
   function handleSuggest() {
-    setDaySlots(generatePlan(inventory))
+    setDaySlots(generatePlan(inventory, eventDays, currentEvent))
   }
 
   function clearPlan() {
-    setDaySlots(Object.fromEntries(EVENT_DAYS.map(d => [d.dayIndex, EMPTY_SLOTS()])))
+    setDaySlots(Object.fromEntries(eventDays.map(d => [d.dayIndex, EMPTY_SLOTS()])))
   }
 
   // D&D: スロットにドロップ
@@ -486,11 +405,13 @@ const [dragId, setDragId] = useState<string | null>(null)
       const POKEMON_LATIAS = new Set(["pokemon", "latias"])
       if (POKEMON_LATIAS.has(dragId) && other && POKEMON_LATIAS.has(other)) return
     }
+    const curMainId = currentEvent.mainIncenseId
+    const curSableId = currentEvent.umouPrices.mainSableId
     if (slot === "mondaySlot"    && dragId !== "help-whistle") return
     if (slot === "campSlot"      && dragId !== "good-camp")    return
-    if (slot === "sableSlot"     && dragId !== "master-sable" && dragId !== "latias-sable") return
-    if (slot === "sableSlot2"    && dragId !== "master-sable" && dragId !== "latias-sable") return
-    if (slot === "carryoverSlot" && dragId !== "latias") return
+    if (slot === "sableSlot"     && dragId !== "master-sable" && dragId !== curSableId) return
+    if (slot === "sableSlot2"    && dragId !== "master-sable" && dragId !== curSableId) return
+    if (slot === "carryoverSlot" && dragId !== curMainId) return
     if (slot === "carryoverSlot" && dayIndex !== 13) return
 
     // 在庫チェック（スロットからの移動は使用数-1で判定）
@@ -698,8 +619,8 @@ const [dragId, setDragId] = useState<string | null>(null)
     })
   }
 
-  const week1 = EVENT_DAYS.slice(0, 7)
-  const week2 = EVENT_DAYS.slice(7, 14)
+  const week1 = eventDays.slice(0, 7)
+  const week2 = eventDays.slice(7, 14)
 
   return (
     <>
@@ -709,14 +630,55 @@ const [dragId, setDragId] = useState<string | null>(null)
       <div className="mx-auto" style={{ maxWidth: "calc(7 * 9rem + 2rem)" }}>
 
       {/* ── ヘッダー ── */}
-      <header className="px-4 pt-4 pb-3 text-center">
-        <h1 className="text-lg font-bold text-gray-800 mb-0.5">ラティアスリサーチ スケジューラー</h1>
-        <p className="text-xs text-gray-500">
-          4/6(月) 〜 4/19(日)
-          {remainingDays > 0 && (
-            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full text-xs font-medium">残り{remainingDays}日</span>
-          )}
-        </p>
+      <header className="px-4 pt-4 pb-3">
+        <div className="flex items-center justify-between gap-2">
+          {/* 前のイベントへ */}
+          <button
+            onClick={() => setEventIndex(i => Math.max(0, i - 1))}
+            disabled={eventIndex === 0}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-20 disabled:cursor-default transition-colors"
+            aria-label="前のイベント"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          {/* イベント名 + 期間 */}
+          <div className="text-center flex-1 min-w-0">
+            <h1 className="text-base font-bold text-gray-800 truncate">{currentEvent.name}</h1>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {currentEvent.startDate.getMonth() + 1}/{currentEvent.startDate.getDate()}(月)
+              {" 〜 "}
+              {currentEvent.endDate.getMonth() + 1}/{currentEvent.endDate.getDate() - 1}(日)
+              {remainingDays > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full text-xs font-medium">残り{remainingDays}日</span>
+              )}
+            </p>
+            {/* イベントインジケーター */}
+            <div className="flex justify-center gap-1 mt-1.5">
+              {EVENTS.map((ev, i) => (
+                <button
+                  key={ev.id}
+                  onClick={() => setEventIndex(i)}
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full transition-all",
+                    i === eventIndex ? "bg-blue-500 w-3" : "bg-gray-300 hover:bg-gray-400"
+                  )}
+                  aria-label={ev.shortName}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* 次のイベントへ */}
+          <button
+            onClick={() => setEventIndex(i => Math.min(EVENTS.length - 1, i + 1))}
+            disabled={eventIndex === EVENTS.length - 1}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-20 disabled:cursor-default transition-colors"
+            aria-label="次のイベント"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       {/* ── おこう在庫エリア ── */}
@@ -727,14 +689,14 @@ const [dragId, setDragId] = useState<string | null>(null)
             <span className="ml-2 text-gray-400">→ 提案ボタンで配置 → タップでカスタマイズ</span>
           </p>
           <button
-            onClick={() => setInventory(Object.fromEntries(INCENSE_MASTERS.map(i => [i.id, 0])))}
+            onClick={() => setInventory(prev => ({ ...prev, ...Object.fromEntries(eventItems.map(i => [i.id, 0])) }))}
             className="text-[10px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-2 py-0.5 transition-colors whitespace-nowrap"
           >
             在庫をリセット
           </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {INCENSE_MASTERS.map(incense => {
+          {eventItems.map(incense => {
             const qty = inventory[incense.id] ?? 0
             const used = usedCount(incense.id)
             const canDrag = qty > 0 && used < qty
@@ -894,7 +856,7 @@ const [dragId, setDragId] = useState<string | null>(null)
               />
             ))}
           </div>
-          <EventBarsOverlay week={0} activeTooltipId={activeTooltip?.id ?? null} onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })} />
+          <EventBarsOverlay week={0} calendarEvents={currentEvent.calendarEvents} activeTooltipId={activeTooltip?.id ?? null} onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })} />
         </div>
 
         {/* Week 2（バーをオーバーレイ） */}
@@ -945,7 +907,7 @@ const [dragId, setDragId] = useState<string | null>(null)
             />
           ))}
         </div>
-          <EventBarsOverlay week={1} activeTooltipId={activeTooltip?.id ?? null} onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })} />
+          <EventBarsOverlay week={1} calendarEvents={currentEvent.calendarEvents} activeTooltipId={activeTooltip?.id ?? null} onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })} />
         </div>
 
         {/* ── メモエリア ── */}
@@ -971,7 +933,7 @@ const [dragId, setDragId] = useState<string | null>(null)
         className="w-92 rounded-xl bg-white border border-gray-200 shadow-xl shadow-black/10 p-3"
       >
         {(() => {
-          const ev = CALENDAR_EVENTS.find(e => e.id === activeTooltip.id)
+          const ev = currentEvent.calendarEvents.find(e => e.id === activeTooltip.id)
           if (!ev) return null
           return (
             <>
@@ -1322,14 +1284,16 @@ function DayCell({
 
 function EventBarsOverlay({
   week,
+  calendarEvents,
   activeTooltipId,
   onBarClick,
 }: {
   week: number
+  calendarEvents: PokeSleepEvent["calendarEvents"]
   activeTooltipId: string | null
   onBarClick: (id: string, x: number, y: number) => void
 }) {
-  const events = CALENDAR_EVENTS.filter(e => e.week === week)
+  const events = calendarEvents.filter((e: PokeSleepEvent["calendarEvents"][number]) => e.week === week)
   if (events.length === 0) return null
 
   return (
