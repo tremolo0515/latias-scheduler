@@ -837,15 +837,17 @@ const [dragId, setDragId] = useState<string | null>(null)
                 })()}
                 onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
                 sableMax={(() => {
+                  const sid = currentEvent.umouPrices.mainSableId
                   const s = daySlots[day.dayIndex]
-                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
-                  return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed - (s.sableSlot2 === "latias-sable" ? s.sableCount2 : 0))
+                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+                  return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
                 })()}
                 onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
                 sableMax2={(() => {
+                  const sid = currentEvent.umouPrices.mainSableId
                   const s = daySlots[day.dayIndex]
-                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
-                  return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed - (s.sableSlot === "latias-sable" ? s.sableCount : 0))
+                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+                  return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
                 })()}
                 cumulativeUmou={umouCumulative[day.dayIndex] ?? 0}
                 todayDayIndex={todayDayIndex}
@@ -853,6 +855,8 @@ const [dragId, setDragId] = useState<string | null>(null)
                   ...prev,
                   [day.dayIndex]: { ...prev[day.dayIndex], splitSleep: !prev[day.dayIndex].splitSleep, slot3: null, slot4: null }
                 }))}
+                mainIncenseId={currentEvent.mainIncenseId}
+                mainSableId={currentEvent.umouPrices.mainSableId}
               />
             ))}
           </div>
@@ -888,15 +892,17 @@ const [dragId, setDragId] = useState<string | null>(null)
               })()}
               onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
               sableMax={(() => {
+                const sid = currentEvent.umouPrices.mainSableId
                 const s = daySlots[day.dayIndex]
-                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
-                return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed - (s.sableSlot2 === "latias-sable" ? s.sableCount2 : 0))
+                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+                return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
               })()}
               onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
               sableMax2={(() => {
+                const sid = currentEvent.umouPrices.mainSableId
                 const s = daySlots[day.dayIndex]
-                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
-                return Math.max(1, (inventory["latias-sable"] ?? 0) - otherUsed - (s.sableSlot === "latias-sable" ? s.sableCount : 0))
+                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+                return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
               })()}
               cumulativeUmou={umouCumulative[day.dayIndex] ?? 0}
               todayDayIndex={todayDayIndex}
@@ -904,6 +910,8 @@ const [dragId, setDragId] = useState<string | null>(null)
                 ...prev,
                 [day.dayIndex]: { ...prev[day.dayIndex], splitSleep: !prev[day.dayIndex].splitSleep, slot3: null, slot4: null }
               }))}
+              mainIncenseId={currentEvent.mainIncenseId}
+              mainSableId={currentEvent.umouPrices.mainSableId}
             />
           ))}
         </div>
@@ -985,6 +993,8 @@ interface DayCellProps {
   cumulativeUmou: number
   todayDayIndex: number
   onToggleSplitSleep: () => void
+  mainIncenseId: string
+  mainSableId: string
 }
 
 /** 汎用アイテムスロット */
@@ -1094,6 +1104,7 @@ function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
   onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax, onSableCountChange2, sableMax2, cumulativeUmou, todayDayIndex, onToggleSplitSleep,
+  mainIncenseId, mainSableId,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -1165,18 +1176,18 @@ function DayCell({
               onDrop={() => onDropSlot("slot2")} onTap={() => onTapSlot("slot2")} onTapItem={slots.slot2 ? () => onTapFromSlot("slot2", slots.slot2!) : undefined} onClear={() => onClearSlot("slot2")}
               onDragFromSlot={slots.slot2 ? (e) => onDragFromSlot("slot2", slots.slot2!, e) : undefined}
             />
-            {/* サブレスロット（ラティアス配置時のみ・マスターサブレorラティアスサブレ排他） */}
-            {(slots.slot1 === "latias" || slots.slot2 === "latias") && (
+            {/* サブレスロット（メインおこう配置時のみ・マスターサブレorサブレ排他） */}
+            {(slots.slot1 === mainIncenseId || slots.slot2 === mainIncenseId) && (
               <ItemSlot
                 itemId={slots.sableSlot}
-                isOver={isDragOver && (dragId === "master-sable" || dragId === "latias-sable") && !slots.sableSlot}
-                isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === "latias-sable") && !slots.sableSlot}
+                isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot}
+                isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot}
                 isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
                 hasTapSelected={!!tapSelectedId}
                 bgImageUrls={["/img/poke_sable.png"]}
-                count={slots.sableSlot === "latias-sable" ? slots.sableCount : undefined}
+                count={slots.sableSlot === mainSableId ? slots.sableCount : undefined}
                 maxCount={sableMax}
-                onCountChange={slots.sableSlot === "latias-sable" ? onSableCountChange : undefined}
+                onCountChange={slots.sableSlot === mainSableId ? onSableCountChange : undefined}
                 onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined} onClear={() => onClearSlot("sableSlot")}
                 onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
               />
@@ -1204,18 +1215,18 @@ function DayCell({
                 onDrop={() => onDropSlot("slot4")} onTap={() => onTapSlot("slot4")} onTapItem={slots.slot4 ? () => onTapFromSlot("slot4", slots.slot4!) : undefined} onClear={() => onClearSlot("slot4")}
                 onDragFromSlot={slots.slot4 ? (e) => onDragFromSlot("slot4", slots.slot4!, e) : undefined}
               />
-              {/* 2回目睡眠用サブレスロット（slot3/slot4 にラティアスがある場合） */}
-              {(slots.slot3 === "latias" || slots.slot4 === "latias") && (
+              {/* 2回目睡眠用サブレスロット（slot3/slot4 にメインおこうがある場合） */}
+              {(slots.slot3 === mainIncenseId || slots.slot4 === mainIncenseId) && (
                 <ItemSlot
                   itemId={slots.sableSlot2}
-                  isOver={isDragOver && (dragId === "master-sable" || dragId === "latias-sable") && !slots.sableSlot2}
-                  isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === "latias-sable") && !slots.sableSlot2}
+                  isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot2}
+                  isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot2}
                   isTapSelected={tapSelectedId === slots.sableSlot2 && !!slots.sableSlot2}
                   hasTapSelected={!!tapSelectedId}
                   bgImageUrls={["/img/poke_sable.png"]}
-                  count={slots.sableSlot2 === "latias-sable" ? slots.sableCount2 : undefined}
+                  count={slots.sableSlot2 === mainSableId ? slots.sableCount2 : undefined}
                   maxCount={sableMax2}
-                  onCountChange={slots.sableSlot2 === "latias-sable" ? onSableCountChange2 : undefined}
+                  onCountChange={slots.sableSlot2 === mainSableId ? onSableCountChange2 : undefined}
                   onDrop={() => onDropSlot("sableSlot2")} onTap={() => onTapSlot("sableSlot2")} onTapItem={slots.sableSlot2 ? () => onTapFromSlot("sableSlot2", slots.sableSlot2!) : undefined} onClear={() => onClearSlot("sableSlot2")}
                   onDragFromSlot={slots.sableSlot2 ? (e) => onDragFromSlot("sableSlot2", slots.sableSlot2!, e) : undefined}
                 />
@@ -1260,12 +1271,12 @@ function DayCell({
               <div className="ml-auto">
                 <ItemSlot
                   itemId={slots.carryoverSlot}
-                  isOver={isDragOver && dragId === "latias" && !slots.carryoverSlot}
-                  isTapTarget={tapSelectedId === "latias" && !slots.carryoverSlot}
+                  isOver={isDragOver && dragId === mainIncenseId && !slots.carryoverSlot}
+                  isTapTarget={tapSelectedId === mainIncenseId && !slots.carryoverSlot}
                   isTapSelected={tapSelectedId === slots.carryoverSlot && !!slots.carryoverSlot}
                   hasTapSelected={!!tapSelectedId}
                   label={"持越し"}
-                  bgImageUrls={[getIncenseById("latias")?.imageUrl ?? ""]}
+                  bgImageUrls={[getIncenseById(mainIncenseId)?.imageUrl ?? ""]}
                   onDrop={() => onDropSlot("carryoverSlot")}
                   onTap={() => onTapSlot("carryoverSlot")}
                   onTapItem={slots.carryoverSlot ? () => onTapFromSlot("carryoverSlot", slots.carryoverSlot!) : undefined}
