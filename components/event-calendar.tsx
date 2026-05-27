@@ -772,13 +772,11 @@ const [dragId, setDragId] = useState<string | null>(null)
         >
           <span className="text-xs font-semibold">クリア</span>
         </button>
-        {totalUmou > 0 && (
-          <div className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 border border-purple-200">
+        <div className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 border border-purple-200">
             <span className="text-sm">🪶</span>
             <span className="text-xs text-purple-700 font-medium">合計必要うもう数</span>
             <span className="text-sm font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
           </div>
-        )}
       </div>
 
       {/* ── カレンダーグリッド ── */}
