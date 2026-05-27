@@ -21,6 +21,33 @@ export interface UmouPriceTable {
   mainSableId: string
 }
 
+// ─── うもう交換所 ─────────────────────────────────────────
+
+/** 交換所の1行定義 */
+export interface ExchangeShopEntry {
+  /** 交換品の表示名 */
+  label: string
+  /** 在庫に加算するアイテムID（null = 在庫管理対象外） */
+  itemId: string | null
+  /** 1回の交換で加算する個数 */
+  itemQty: number
+  /** 交換可能回数 */
+  maxCount: number
+  /** 必要うもう（1回あたり） */
+  umouCost: number
+}
+
+/** 週ごとの交換所 */
+export interface ExchangeShopWeek {
+  label: string  // "第1週" | "第2週" など
+  entries: ExchangeShopEntry[]
+}
+
+/** イベントに紐づくうもう交換所定義 */
+export interface UmouExchangeShop {
+  weeks: ExchangeShopWeek[]
+}
+
 export interface SpecialDayConfig {
   /** 新月デーなど特別なdayIndexの集合 */
   specialDayIndices: Set<number>
@@ -65,6 +92,8 @@ export interface PokeSleepEvent {
   itemIds: string[]
   /** このイベントのメインおこうID（配置優先度最上位） */
   mainIncenseId: string
+  /** うもう交換所定義（省略時は非表示） */
+  umouShop?: UmouExchangeShop
 }
 
 // ─── buildEventDays ────────────────────────────────────────
@@ -114,7 +143,7 @@ export const EVENTS: PokeSleepEvent[] = [
   // ── ラティアスリサーチ 2026/4/6〜4/19 ──
   {
     id: "latias-2026-04",
-    name: "ラティアスとゆめのしずく",
+    name: "ラティアスリサーチ",
     shortName: "ラティアス",
     startDate: new Date(2026, 3, 6, 4, 0, 0),   // 4月6日 04:00
     endDate:   new Date(2026, 3, 19, 3, 59, 0),  // 4月19日 03:59
@@ -177,6 +206,35 @@ export const EVENTS: PokeSleepEvent[] = [
       "latias", "good-camp", "help-whistle", "master-sable", "latias-sable",
     ],
     mainIncenseId: "latias",
+    umouShop: {
+      weeks: [
+        {
+          label: "第1週",
+          entries: [
+            { label: "ラティアスのおこう×1", itemId: "latias",       itemQty: 1, maxCount: 2,   umouCost: 80  },
+            { label: "ラティアスのおこう×1", itemId: "latias",       itemQty: 1, maxCount: 7,   umouCost: 160 },
+            { label: "ラティアスサブレ×1",   itemId: "latias-sable", itemQty: 1, maxCount: 2,   umouCost: 60  },
+            { label: "ラティアスサブレ×1",   itemId: "latias-sable", itemQty: 1, maxCount: 10,  umouCost: 120 },
+            { label: "ばんのうアメS×1",      itemId: null,           itemQty: 1, maxCount: 10,  umouCost: 12  },
+            { label: "ドラゴンタイプのアメS×1", itemId: null,        itemQty: 1, maxCount: 10,  umouCost: 12  },
+            { label: "ゆめのかたまりS×1",    itemId: null,           itemQty: 1, maxCount: 15,  umouCost: 12  },
+            { label: "メインスキルのたね×1", itemId: null,           itemQty: 1, maxCount: 1,   umouCost: 350 },
+            { label: "なかよしのおこう×1",   itemId: "nakayoshi",    itemQty: 1, maxCount: 3,   umouCost: 45  },
+            { label: "げんきマクラ×1",       itemId: null,           itemQty: 1, maxCount: 1,   umouCost: 20  },
+            { label: "ラティアスのアメ×1",   itemId: null,           itemQty: 1, maxCount: 100, umouCost: 2   },
+            { label: "ラティアスのアメ×1",   itemId: null,           itemQty: 1, maxCount: 999, umouCost: 6   },
+          ],
+        },
+        {
+          label: "第2週追加",
+          entries: [
+            { label: "ラティアスのおこう×1", itemId: "latias",       itemQty: 1, maxCount: 2,  umouCost: 70 },
+            { label: "ラティアスサブレ×1",   itemId: "latias-sable", itemQty: 1, maxCount: 2,  umouCost: 50 },
+            { label: "ばんのうアメS×1",      itemId: null,           itemQty: 1, maxCount: 10, umouCost: 10 },
+          ],
+        },
+      ],
+    },
   },
 
   // ── ラティオスとこころのしずく 2026/6/8〜6/21 ──
@@ -261,6 +319,35 @@ export const EVENTS: PokeSleepEvent[] = [
       "latios", "good-camp", "help-whistle", "master-sable", "latios-sable",
     ],
     mainIncenseId: "latios",
+    umouShop: {
+      weeks: [
+        {
+          label: "第1週",
+          entries: [
+            { label: "ラティオスのおこう×1", itemId: "latios",       itemQty: 1, maxCount: 2,   umouCost: 80  },
+            { label: "ラティオスのおこう×1", itemId: "latios",       itemQty: 1, maxCount: 7,   umouCost: 160 },
+            { label: "ラティオスサブレ×1",   itemId: "latios-sable", itemQty: 1, maxCount: 2,   umouCost: 60  },
+            { label: "ラティオスサブレ×1",   itemId: "latios-sable", itemQty: 1, maxCount: 10,  umouCost: 120 },
+            { label: "ばんのうアメS×1",      itemId: null,           itemQty: 1, maxCount: 10,  umouCost: 12  },
+            { label: "ドラゴンタイプのアメS×1", itemId: null,        itemQty: 1, maxCount: 10,  umouCost: 12  },
+            { label: "ゆめのかたまりS×1",    itemId: null,           itemQty: 1, maxCount: 15,  umouCost: 12  },
+            { label: "メインスキルのたね×1", itemId: null,           itemQty: 1, maxCount: 1,   umouCost: 350 },
+            { label: "なかよしのおこう×1",   itemId: "nakayoshi",    itemQty: 1, maxCount: 3,   umouCost: 45  },
+            { label: "げんきマクラ×1",       itemId: null,           itemQty: 1, maxCount: 1,   umouCost: 20  },
+            { label: "ラティオスのアメ×1",   itemId: null,           itemQty: 1, maxCount: 100, umouCost: 2   },
+            { label: "ラティオスのアメ×1",   itemId: null,           itemQty: 1, maxCount: 999, umouCost: 6   },
+          ],
+        },
+        {
+          label: "第2週追加",
+          entries: [
+            { label: "ラティオスのおこう×1", itemId: "latios",       itemQty: 1, maxCount: 2,  umouCost: 70 },
+            { label: "ラティオスサブレ×1",   itemId: "latios-sable", itemQty: 1, maxCount: 2,  umouCost: 50 },
+            { label: "ばんのうアメS×1",      itemId: null,           itemQty: 1, maxCount: 10, umouCost: 10 },
+          ],
+        },
+      ],
+    },
   },
 ]
 

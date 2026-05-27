@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { INCENSE_MASTERS, getIncenseById, type IncenseMaster } from "@/lib/data/items"
-import { EVENTS, buildEventDays, type PokeSleepEvent, type UmouPriceTable } from "@/lib/data/events"
+import { EVENTS, buildEventDays, type PokeSleepEvent, type UmouPriceTable, type ExchangeShopEntry } from "@/lib/data/events"
 import type { DayInfo } from "@/lib/types/calendar"
 
 // ─── 型定義 ────────────────────────────────────────────────
@@ -289,7 +289,38 @@ export function EventCalendar() {
     localStorage.setItem(lsKey(currentEvent.id, "memo"), memo)
   }, [memo, currentEvent.id])
 
-const [dragId, setDragId] = useState<string | null>(null)
+  // ── 交換所: 各エントリの交換済み回数 (key: `weekIdx-entryIdx`) ──
+  const [shopCounts, setShopCounts] = useState<Record<string, number>>({})
+  // イベント切替時にlocalStorageから復元
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(lsKey(currentEvent.id, "shop"))
+      setShopCounts(s ? JSON.parse(s) : {})
+    } catch { setShopCounts({}) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEvent.id])
+  useEffect(() => {
+    localStorage.setItem(lsKey(currentEvent.id, "shop"), JSON.stringify(shopCounts))
+  }, [shopCounts, currentEvent.id])
+
+  /** 交換所の個数変更 → 在庫に反映 */
+  function handleShopCount(weekIdx: number, entryIdx: number, entry: ExchangeShopEntry, newVal: number) {
+    const key = `${weekIdx}-${entryIdx}`
+    const prev = shopCounts[key] ?? 0
+    const delta = newVal - prev
+    setShopCounts(c => ({ ...c, [key]: newVal }))
+    if (entry.itemId && delta !== 0) {
+      setInventory(inv => ({
+        ...inv,
+        [entry.itemId!]: Math.max(0, (inv[entry.itemId!] ?? 0) + delta * entry.itemQty),
+      }))
+    }
+  }
+
+  // ── 在庫: 鉛筆編集モード (itemId → true) ──
+  const [editingInventory, setEditingInventory] = useState<Record<string, boolean>>({})
+
+  const [dragId, setDragId] = useState<string | null>(null)
   const [dragSource, setDragSource] = useState<{ dayIndex: number; slot: keyof DaySlots } | null>(null)
   const [dragOverDay, setDragOverDay] = useState<number | null>(null)
 
@@ -690,12 +721,46 @@ const [dragId, setDragId] = useState<string | null>(null)
       <section className="px-4 mb-2">
         <div className="flex gap-3">
 
-          {/* ── 左: 交換所（プレースホルダ） ── */}
+          {/* ── 左: うもう交換所 ── */}
           <div className="flex flex-col gap-2 w-44 shrink-0">
-            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 flex flex-col gap-1 opacity-50">
-              <p className="text-[10px] font-semibold text-gray-500">🪶 うもう交換所</p>
-              <p className="text-[9px] text-gray-400">Coming soon</p>
-            </div>
+            {currentEvent.umouShop ? (
+              <div className="rounded-xl border border-purple-200 bg-purple-50/60 p-2 flex flex-col gap-1.5">
+                <p className="text-[10px] font-semibold text-purple-700">🪶 うもう交換所</p>
+                {currentEvent.umouShop.weeks.map((week, wi) => (
+                  <div key={wi}>
+                    <p className="text-[8px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
+                    {week.entries.map((entry, ei) => {
+                      const key = `${wi}-${ei}`
+                      const val = shopCounts[key] ?? 0
+                      // 在庫管理対象外は薄く表示
+                      const isTracked = entry.itemId !== null
+                      return (
+                        <div key={ei} className={cn("flex items-center gap-1 py-0.5", !isTracked && "opacity-40")}>
+                          <span className="text-[8px] text-gray-600 flex-1 leading-tight line-clamp-1" title={entry.label}>
+                            {entry.label}
+                          </span>
+                          <span className="text-[7px] text-purple-500 shrink-0">{entry.umouCost}🪶</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={entry.maxCount}
+                            value={val}
+                            onChange={e => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, Math.max(0, Number(e.target.value))))}
+                            className="w-8 text-[9px] text-center border border-purple-200 rounded bg-white focus:outline-none focus:border-purple-400 py-0"
+                          />
+                          <span className="text-[7px] text-gray-400 shrink-0">/{entry.maxCount}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 flex flex-col gap-1 opacity-50">
+                <p className="text-[10px] font-semibold text-gray-500">🪶 うもう交換所</p>
+                <p className="text-[9px] text-gray-400">データなし</p>
+              </div>
+            )}
             <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 flex flex-col gap-1 opacity-50">
               <p className="text-[10px] font-semibold text-gray-500">💎 ダイヤ交換所</p>
               <p className="text-[9px] text-gray-400">Coming soon</p>
@@ -735,6 +800,8 @@ const [dragId, setDragId] = useState<string | null>(null)
                       canDrag={canDrag}
                       isDragging={dragId === incense.id}
                       isTapSelected={tapSelectedId === incense.id}
+                      isEditing={editingInventory[incense.id] ?? false}
+                      onEditToggle={() => setEditingInventory(prev => ({ ...prev, [incense.id]: !prev[incense.id] }))}
                       onDragStart={(e) => {
                         setDragId(incense.id)
                         const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
@@ -742,7 +809,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                       }}
                       onDragEnd={() => { setDragId(null); setDragSource(null) }}
                       onTap={() => { if (canDrag) setTapSelectedId(prev => prev === incense.id ? null : incense.id) }}
-                      onQtyChange={(v) => setInventory(prev => ({ ...prev, [incense.id]: v }))}
+                      onQtyChange={(v) => { setInventory(prev => ({ ...prev, [incense.id]: v })); setEditingInventory(prev => ({ ...prev, [incense.id]: false })) }}
                     />
                   )
                 })}
@@ -764,6 +831,8 @@ const [dragId, setDragId] = useState<string | null>(null)
                       canDrag={canDrag}
                       isDragging={dragId === incense.id}
                       isTapSelected={tapSelectedId === incense.id}
+                      isEditing={editingInventory[incense.id] ?? false}
+                      onEditToggle={() => setEditingInventory(prev => ({ ...prev, [incense.id]: !prev[incense.id] }))}
                       onDragStart={(e) => {
                         setDragId(incense.id)
                         const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
@@ -771,7 +840,7 @@ const [dragId, setDragId] = useState<string | null>(null)
                       }}
                       onDragEnd={() => { setDragId(null); setDragSource(null) }}
                       onTap={() => { if (canDrag) setTapSelectedId(prev => prev === incense.id ? null : incense.id) }}
-                      onQtyChange={(v) => setInventory(prev => ({ ...prev, [incense.id]: v }))}
+                      onQtyChange={(v) => { setInventory(prev => ({ ...prev, [incense.id]: v })); setEditingInventory(prev => ({ ...prev, [incense.id]: false })) }}
                     />
                   )
                 })}
@@ -989,6 +1058,7 @@ const [dragId, setDragId] = useState<string | null>(null)
 
 function InventoryRow({
   incense, qty, used, canDrag, isDragging, isTapSelected,
+  isEditing, onEditToggle,
   onDragStart, onDragEnd, onTap, onQtyChange,
 }: {
   incense: IncenseMaster
@@ -997,6 +1067,8 @@ function InventoryRow({
   canDrag: boolean
   isDragging: boolean
   isTapSelected: boolean
+  isEditing: boolean
+  onEditToggle: () => void
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
   onTap: () => void
@@ -1031,17 +1103,31 @@ function InventoryRow({
         {incense.name}
       </span>
       <div className="flex flex-col items-end gap-0.5 shrink-0">
-        <select
-          value={qty}
-          onChange={(e) => onQtyChange(Number(e.target.value))}
-          onClick={(e) => e.stopPropagation()}
-          className="w-10 text-xs font-bold text-center text-gray-800 bg-gray-50 border border-gray-200 rounded py-0 focus:outline-none focus:border-blue-400"
-          style={{ textAlignLast: "center" }}
-        >
-          {Array.from({ length: max + 1 }, (_, i) => (
-            <option key={i} value={i}>{i}</option>
-          ))}
-        </select>
+        {isEditing ? (
+          <input
+            type="number"
+            min={0}
+            max={max}
+            defaultValue={qty}
+            autoFocus
+            onClick={(e) => e.stopPropagation()}
+            onBlur={(e) => { onQtyChange(Math.min(max, Math.max(0, Number(e.target.value)))) }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+              if (e.key === "Escape") onEditToggle()
+            }}
+            className="w-10 text-xs font-bold text-center text-gray-800 bg-white border border-blue-400 rounded py-0 focus:outline-none"
+          />
+        ) : (
+          <button
+            onClick={(e) => { e.stopPropagation(); onEditToggle() }}
+            className="flex items-center gap-0.5 px-1 py-0 rounded hover:bg-gray-100 transition-colors group"
+            title="個数を編集"
+          >
+            <span className="text-xs font-bold text-gray-800">{qty}</span>
+            <span className="text-[8px] text-gray-300 group-hover:text-gray-500">✏️</span>
+          </button>
+        )}
         <span className={cn("text-[8px] text-blue-500", used === 0 && "invisible")}>
           配置:{used}
         </span>
