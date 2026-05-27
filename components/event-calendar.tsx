@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Sparkles, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { INCENSE_MASTERS, getIncenseById } from "@/lib/data/items"
+import { INCENSE_MASTERS, getIncenseById, type IncenseMaster } from "@/lib/data/items"
 import { EVENTS, buildEventDays, type PokeSleepEvent, type UmouPriceTable } from "@/lib/data/events"
 import type { DayInfo } from "@/lib/types/calendar"
 
@@ -681,80 +681,99 @@ const [dragId, setDragId] = useState<string | null>(null)
         </div>
       </header>
 
-      {/* ── おこう在庫エリア ── */}
+      {/* ── 在庫エリア（左: 交換所プレースホルダ / 右: 在庫） ── */}
       <section className="px-4 mb-2">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-gray-500">
-            <span className="font-medium text-gray-700">在庫を入力</span>
-            <span className="ml-2 text-gray-400">→ 提案ボタンで配置 → タップでカスタマイズ</span>
-          </p>
-          <button
-            onClick={() => setInventory(prev => ({ ...prev, ...Object.fromEntries(eventItems.map(i => [i.id, 0])) }))}
-            className="text-[10px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-2 py-0.5 transition-colors whitespace-nowrap"
-          >
-            在庫をリセット
-          </button>
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {eventItems.map(incense => {
-            const qty = inventory[incense.id] ?? 0
-            const used = usedCount(incense.id)
-            const canDrag = qty > 0 && used < qty
-            return (
-              <div
-                key={incense.id}
-                draggable={canDrag}
-                onDragStart={(e) => {
-                  setDragId(incense.id)
-                  // DOM内の既ロード済みimgを使う（new Image()は未ロード時にSafariでドラッグがキャンセルされる）
-                  const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
-                  if (imgEl) e.dataTransfer.setDragImage(imgEl, 20, 20)
-                }}
-                onDragEnd={() => { setDragId(null); setDragSource(null) }}
-                data-tap-item
-                onClick={() => {
-                  if (!canDrag) return
-                  setTapSelectedId(prev => prev === incense.id ? null : incense.id)
-                }}
-                className={cn(
-                  "flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl border shrink-0 select-none transition-all w-18",
-                  canDrag
-                    ? "bg-white border-gray-300 cursor-grab active:cursor-grabbing hover:border-blue-400 shadow-sm"
-                    : "bg-gray-50 border-gray-200 opacity-50 cursor-default",
-                  dragId === incense.id && "border-blue-400 scale-95 opacity-80",
-                  tapSelectedId === incense.id && "border-blue-500 ring-2 ring-blue-300 scale-95"
-                )}
-              >
-                {/* アイテム画像 */}
-                <img
-                  src={incense.imageUrl}
-                  alt={incense.name}
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 object-contain"
-                  draggable={false}
-                />
-                <span className="text-[8px] text-gray-600 leading-tight w-full text-center line-clamp-2">
-                  {incense.name}
-                </span>
-                {/* 個数セレクト */}
-                <select
-                  value={qty}
-                  onChange={(e) => setInventory(prev => ({ ...prev, [incense.id]: Number(e.target.value) }))}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full text-xs font-bold text-center text-gray-800 bg-gray-50 border border-gray-200 rounded py-0.5 focus:outline-none focus:border-blue-400"
-                  style={{ textAlignLast: "center" }}
-                >
-                  {Array.from({ length: (incense.maxStock ?? (incense.id === "good-camp" ? 2 : 99)) + 1 }, (_, i) => (
-                    <option key={i} value={i}>{i}</option>
-                  ))}
-                </select>
-                <span className={cn("text-[8px] text-blue-500", used === 0 && "invisible")}>配置:{used}</span>
+        <div className="flex gap-3">
 
-              </div>
-            )
-          })}
+          {/* ── 左: 交換所（プレースホルダ） ── */}
+          <div className="flex flex-col gap-2 w-44 shrink-0">
+            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 flex flex-col gap-1 opacity-50">
+              <p className="text-[10px] font-semibold text-gray-500">🪶 うもう交換所</p>
+              <p className="text-[9px] text-gray-400">Coming soon</p>
+            </div>
+            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 flex flex-col gap-1 opacity-50">
+              <p className="text-[10px] font-semibold text-gray-500">💎 ダイヤ交換所</p>
+              <p className="text-[9px] text-gray-400">Coming soon</p>
+            </div>
           </div>
+
+          {/* ── 右: 在庫 ── */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] text-gray-500">
+                <span className="font-medium text-gray-700">在庫入力</span>
+                <span className="ml-1.5 text-gray-400">→ タップ or ドラッグで配置</span>
+              </p>
+              <button
+                onClick={() => setInventory(prev => ({ ...prev, ...Object.fromEntries(eventItems.map(i => [i.id, 0])) }))}
+                className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
+              >
+                リセット
+              </button>
+            </div>
+
+            {/* 2列: おこう列 ｜ その他アイテム列 */}
+            <div className="flex gap-2">
+              {/* おこう列 */}
+              <div className="flex-1 flex flex-col gap-1">
+                <p className="text-[9px] font-semibold text-gray-400 mb-0.5">おこう</p>
+                {eventItems.filter(i => ["energy","exp","shard","pokemon-exp","chance","pokemon"].includes(i.effectType)).map(incense => {
+                  const qty = inventory[incense.id] ?? 0
+                  const used = usedCount(incense.id)
+                  const canDrag = qty > 0 && used < qty
+                  return (
+                    <InventoryRow
+                      key={incense.id}
+                      incense={incense}
+                      qty={qty}
+                      used={used}
+                      canDrag={canDrag}
+                      isDragging={dragId === incense.id}
+                      isTapSelected={tapSelectedId === incense.id}
+                      onDragStart={(e) => {
+                        setDragId(incense.id)
+                        const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
+                        if (imgEl) e.dataTransfer.setDragImage(imgEl, 16, 16)
+                      }}
+                      onDragEnd={() => { setDragId(null); setDragSource(null) }}
+                      onTap={() => { if (canDrag) setTapSelectedId(prev => prev === incense.id ? null : incense.id) }}
+                      onQtyChange={(v) => setInventory(prev => ({ ...prev, [incense.id]: v }))}
+                    />
+                  )
+                })}
+              </div>
+
+              {/* その他アイテム列 */}
+              <div className="flex-1 flex flex-col gap-1">
+                <p className="text-[9px] font-semibold text-gray-400 mb-0.5">その他</p>
+                {eventItems.filter(i => ["camp","treat","whistle"].includes(i.effectType)).map(incense => {
+                  const qty = inventory[incense.id] ?? 0
+                  const used = usedCount(incense.id)
+                  const canDrag = qty > 0 && used < qty
+                  return (
+                    <InventoryRow
+                      key={incense.id}
+                      incense={incense}
+                      qty={qty}
+                      used={used}
+                      canDrag={canDrag}
+                      isDragging={dragId === incense.id}
+                      isTapSelected={tapSelectedId === incense.id}
+                      onDragStart={(e) => {
+                        setDragId(incense.id)
+                        const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
+                        if (imgEl) e.dataTransfer.setDragImage(imgEl, 16, 16)
+                      }}
+                      onDragEnd={() => { setDragId(null); setDragSource(null) }}
+                      onTap={() => { if (canDrag) setTapSelectedId(prev => prev === incense.id ? null : incense.id) }}
+                      onQtyChange={(v) => setInventory(prev => ({ ...prev, [incense.id]: v }))}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* ── ボタンエリア ── */}
@@ -964,6 +983,71 @@ const [dragId, setDragId] = useState<string | null>(null)
       document.body
     )}
     </>
+  )
+}
+
+// ─── InventoryRow（在庫エリア用コンパクト行） ────────────────
+
+function InventoryRow({
+  incense, qty, used, canDrag, isDragging, isTapSelected,
+  onDragStart, onDragEnd, onTap, onQtyChange,
+}: {
+  incense: IncenseMaster
+  qty: number
+  used: number
+  canDrag: boolean
+  isDragging: boolean
+  isTapSelected: boolean
+  onDragStart: (e: React.DragEvent) => void
+  onDragEnd: () => void
+  onTap: () => void
+  onQtyChange: (v: number) => void
+}) {
+  const max = incense.maxStock ?? (incense.id === "good-camp" ? 2 : 99)
+  return (
+    <div
+      draggable={canDrag}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      data-tap-item
+      onClick={onTap}
+      className={cn(
+        "flex items-center gap-1.5 px-2 py-1 rounded-lg border select-none transition-all",
+        canDrag
+          ? "bg-white border-gray-200 cursor-grab active:cursor-grabbing hover:border-blue-300 shadow-sm"
+          : "bg-gray-50 border-gray-100 opacity-50 cursor-default",
+        isDragging && "border-blue-400 scale-95 opacity-80",
+        isTapSelected && "border-blue-500 ring-2 ring-blue-300 scale-95",
+      )}
+    >
+      <img
+        src={incense.imageUrl}
+        alt={incense.name}
+        width={28}
+        height={28}
+        className="w-7 h-7 object-contain shrink-0"
+        draggable={false}
+      />
+      <span className="text-[9px] text-gray-600 leading-tight flex-1 min-w-0 line-clamp-2">
+        {incense.name}
+      </span>
+      <div className="flex flex-col items-end gap-0.5 shrink-0">
+        <select
+          value={qty}
+          onChange={(e) => onQtyChange(Number(e.target.value))}
+          onClick={(e) => e.stopPropagation()}
+          className="w-10 text-xs font-bold text-center text-gray-800 bg-gray-50 border border-gray-200 rounded py-0 focus:outline-none focus:border-blue-400"
+          style={{ textAlignLast: "center" }}
+        >
+          {Array.from({ length: max + 1 }, (_, i) => (
+            <option key={i} value={i}>{i}</option>
+          ))}
+        </select>
+        <span className={cn("text-[8px] text-blue-500", used === 0 && "invisible")}>
+          配置:{used}
+        </span>
+      </div>
+    </div>
   )
 }
 
