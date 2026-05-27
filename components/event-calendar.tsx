@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
-import { Sparkles, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { X, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { INCENSE_MASTERS, getIncenseById, type IncenseMaster } from "@/lib/data/items"
 import { EVENTS, buildEventDays, type PokeSleepEvent, type UmouPriceTable } from "@/lib/data/events"
@@ -110,9 +110,13 @@ function calcUmou(
   return cost
 }
 
-// ─── 提案ロジック ──────────────────────────────────────────
+// ─── 提案ロジック（一時的に無効化 — 復活させる際はコメントを外す）─────────────────
+// ボタンを復活させる場合:
+//   1. 下記コメントを解除
+//   2. handleSuggest() のコメントを解除
+//   3. ボタンエリアに <Sparkles> ボタンを追加（import { Sparkles } from "lucide-react" も戻す）
 
-/** おこうスロット（slot1/slot2）に空きがあれば配置して true を返す */
+/*
 function placeIncense(plan: Record<number, DaySlots>, dayIndex: number, id: string): boolean {
   const s = plan[dayIndex]
   if (!s.slot1 && s.slot2 !== id) { s.slot1 = id; return true }
@@ -215,6 +219,7 @@ function generatePlan(
 
   return plan
 }
+*/
 
 // ─── メインコンポーネント ──────────────────────────────────
 
@@ -369,10 +374,10 @@ const [dragId, setDragId] = useState<string | null>(null)
     }, 0)
   }
 
-  // 提案
-  function handleSuggest() {
-    setDaySlots(generatePlan(inventory, eventDays, currentEvent))
-  }
+  // 提案（ボタンは一時的に非表示 — 復活させる際はここのコメントを外してボタンJSXを戻す）
+  // function handleSuggest() {
+  //   setDaySlots(generatePlan(inventory, eventDays, currentEvent))
+  // }
 
   function clearPlan() {
     setDaySlots(Object.fromEntries(eventDays.map(d => [d.dayIndex, EMPTY_SLOTS()])))
@@ -777,14 +782,8 @@ const [dragId, setDragId] = useState<string | null>(null)
       </section>
 
       {/* ── ボタンエリア ── */}
+      {/* TODO: おすすめ使用日提案ボタンは一時的に非表示（handleSuggest / generatePlan は保持） */}
       <div className="px-4 mb-2 flex items-center gap-2">
-        <button
-          onClick={handleSuggest}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-linear-to-b from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md transition-colors whitespace-nowrap"
-        >
-          <Sparkles className="w-4 h-4 shrink-0" />
-          <span className="text-xs font-semibold">おすすめ使用日提案</span>
-        </button>
         <button
           onClick={clearPlan}
           className="flex items-center px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-600 shadow-sm transition-colors whitespace-nowrap"
