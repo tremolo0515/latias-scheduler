@@ -214,6 +214,32 @@ export const EVENTS: PokeSleepEvent[] = [
           { label: "ねむけパワー1.5倍(6/21)"},
         ],
       },
+      {
+        // 6/14(日)=dayIndex6 → 第1週7列目
+        id: "newmoon-latios-w1",
+        name: "ニュームーンデー",
+        colStart: 7, colSpan: 1, week: 0,
+        barColor: "bg-indigo-700/70 hover:bg-indigo-600/80",
+        textColor: "text-indigo-100",
+        effects: [
+          { label: "幻のポケモン出現" },
+          { label: "満腹になりづらい" },
+          { label: "色違い出現確率UP" },
+        ],
+      },
+      {
+        // 6/15(月)=dayIndex7, 6/16(火)=dayIndex8 → 第2週1〜2列目
+        id: "newmoon-latios-w2",
+        name: "ニュームーンデー",
+        colStart: 1, colSpan: 2, week: 1,
+        barColor: "bg-indigo-700/70 hover:bg-indigo-600/80",
+        textColor: "text-indigo-100",
+        effects: [
+          { label: "幻のポケモン出現" },
+          { label: "満腹になりづらい" },
+          { label: "色違い出現確率UP" },
+        ],
+      },
     ],
     umouPrices: {
       // ラティオスのうもう交換レート（ラティアスと同様と推定）
@@ -226,7 +252,8 @@ export const EVENTS: PokeSleepEvent[] = [
       mainSableId: "latios-sable",
     },
     specialDays: {
-      specialDayIndices: new Set<number>(),  // ニュームーンなし（現時点では未定）
+      specialDayIndices: new Set([6, 7, 8]),  // 6/14(日)〜6/16(火) ニュームーン
+      specialDayLabel: "ニュームーンデー",
       campDayIndices: [0, 7],  // 6/8(月), 6/15(月)
     },
     itemIds: [
