@@ -751,13 +751,11 @@ export function EventCalendar() {
                           ? <img src={item.imageUrl} alt={item.name} width={16} height={16} className="w-4 h-4 object-contain shrink-0" />
                           : <span className="w-4 h-4 shrink-0" />
                         }
-                        <span className="flex-1 min-w-0 flex items-center gap-1">
-                          <span className="text-[8px] text-gray-600 leading-tight line-clamp-1 min-w-0" title={entry.label}>{entry.label}</span>
-                          <span className="text-[7px] text-purple-400 shrink-0 whitespace-nowrap">{entry.umouCost}🪶</span>
-                        </span>
+                        <span className="text-[8px] text-gray-600 leading-tight line-clamp-1 flex-1 min-w-0" title={entry.label}>{entry.label}</span>
+                        <span className="text-[7px] text-purple-400 shrink-0 w-8 text-right">{entry.umouCost}🪶</span>
                         <button onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
                           className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">－</button>
-                        <span className="text-[10px] font-bold text-gray-800 shrink-0 text-center" style={{minWidth:"2.5rem"}}>{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
+                        <span className="text-[10px] font-bold text-gray-800 shrink-0 text-center w-10">{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
                         <button onClick={() => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, val + 1))}
                           className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">＋</button>
                       </div>
