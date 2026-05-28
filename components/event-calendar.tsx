@@ -1104,7 +1104,7 @@ function InventoryTile({
       />
       {/* ×N テキスト（2個以上のとき） */}
       {remaining >= 2 && (
-        <span className="absolute bottom-0 right-0 text-xs font-black text-gray-900 leading-none drop-shadow-[0_0_3px_white]">
+        <span className="absolute bottom-0 right-0 text-xs font-black text-gray-900 leading-none" style={{ filter: "drop-shadow(0 0 2px white) drop-shadow(0 0 2px white) drop-shadow(0 0 2px white)" }}>
           ×{remaining}
         </span>
       )}
