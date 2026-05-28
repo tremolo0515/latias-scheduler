@@ -742,7 +742,7 @@ export function EventCalendar() {
                 <div key={wi} className="mb-1">
                   <p className="text-[8px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
                   {/* 全行を1つのgridに入れることでうもう量列が縦揃え */}
-                  <div className="grid items-center" style={{ gridTemplateColumns: "1rem 1fr auto 1rem auto 1rem", gap: "2px 4px" }}>
+                  <div className="grid items-center" style={{ gridTemplateColumns: "1rem auto auto 1fr 1rem auto 1rem", gap: "2px 4px" }}>
                     {week.entries.map((entry, ei) => {
                       const key = `${wi}-${ei}`
                       const val = shopCounts[key] ?? 0
@@ -752,8 +752,9 @@ export function EventCalendar() {
                           ? <img key={`${ei}-img`} src={item.imageUrl} alt={item.name} width={16} height={16} className="w-4 h-4 object-contain" />
                           : <span key={`${ei}-img`} />
                         }
-                        <span key={`${ei}-name`} className="text-[8px] text-gray-600 leading-tight line-clamp-1 min-w-0" title={entry.label}>{entry.label}</span>
-                        <span key={`${ei}-cost`} className="text-[7px] text-purple-400 whitespace-nowrap text-right">{entry.umouCost}🪶</span>
+                        <span key={`${ei}-name`} className="text-[8px] text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
+                        <span key={`${ei}-cost`} className="text-[7px] text-purple-400 whitespace-nowrap">{entry.umouCost}🪶</span>
+                        <span key={`${ei}-spacer`} />
                         <button key={`${ei}-minus`} onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
                           className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none">－</button>
                         <span key={`${ei}-val`} className="text-[10px] font-bold text-gray-800 text-center">{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
