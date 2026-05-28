@@ -101,3 +101,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes wiggle {
+  0%   { transform: rotate(0deg) scale(1); }
+  20%  { transform: rotate(-12deg) scale(1.15); }
+  40%  { transform: rotate(10deg) scale(1.1); }
+  60%  { transform: rotate(-8deg) scale(1.05); }
+  80%  { transform: rotate(5deg) scale(1.02); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.animate-wiggle {
+  animation: wiggle 0.45s ease-in-out;
+}

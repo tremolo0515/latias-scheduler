@@ -821,12 +821,12 @@ export function EventCalendar() {
                 const remaining = Math.max(0, qty - used)
                 const canDrag = remaining > 0
                 const isFlashing = (flashItems[incense.id] ?? 0) > 0
+                if (remaining === 0) return null  // 在庫0は非表示
                 return (
                   <InventoryTile
                     key={incense.id}
                     incense={incense}
                     remaining={remaining}
-                    used={used}
                     canDrag={canDrag}
                     isDragging={dragId === incense.id}
                     isTapSelected={tapSelectedId === incense.id}
@@ -1054,15 +1054,18 @@ export function EventCalendar() {
 // ─── InventoryRow（在庫エリア用コンパクト行） ────────────────
 
 // ─── InventoryTile（在庫D&Dパレット用アイコンタイル） ────────────
+// - remaining=0 のとき非表示（呼び出し元でフィルタ）
+// - remaining=1 のとき画像のみ
+// - remaining>=2 のとき右下に ×N バッジ
+// - 在庫追加時に wiggle アニメーション
 
 function InventoryTile({
-  incense, remaining, used, canDrag, isDragging, isTapSelected,
+  incense, remaining, canDrag, isDragging, isTapSelected,
   isFlashing, onFlashEnd,
   onDragStart, onDragEnd, onTap,
 }: {
   incense: IncenseMaster
   remaining: number
-  used: number
   canDrag: boolean
   isDragging: boolean
   isTapSelected: boolean
@@ -1072,65 +1075,46 @@ function InventoryTile({
   onDragEnd: () => void
   onTap: () => void
 }) {
-  // +1 バッジアニメーション
-  const [showPlus, setShowPlus] = useState(false)
+  const [wiggling, setWiggling] = useState(false)
   const prevFlash = useRef(false)
+
   useEffect(() => {
     if (isFlashing && !prevFlash.current) {
-      setShowPlus(true)
-      const t = setTimeout(() => { setShowPlus(false); onFlashEnd() }, 700)
+      setWiggling(true)
+      const t = setTimeout(() => { setWiggling(false); onFlashEnd() }, 450)
+      prevFlash.current = true
       return () => clearTimeout(t)
     }
-    prevFlash.current = isFlashing
+    if (!isFlashing) prevFlash.current = false
   }, [isFlashing, onFlashEnd])
 
   return (
-    <div className="relative">
-      <div
-        draggable={canDrag}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        data-tap-item
-        onClick={onTap}
-        title={`${incense.name}（残${remaining}）`}
-        className={cn(
-          "relative w-12 h-12 flex items-center justify-center rounded-xl border-2 select-none transition-all",
-          canDrag
-            ? "bg-white border-gray-200 cursor-grab active:cursor-grabbing hover:border-blue-300 shadow-sm hover:shadow-md"
-            : "bg-gray-50 border-gray-100 opacity-40 cursor-default",
-          isDragging && "border-blue-400 scale-90 opacity-70",
-          isTapSelected && "border-blue-500 ring-2 ring-blue-300 scale-95 shadow-md",
-          showPlus && "border-green-400",
-        )}
-      >
-        <img
-          src={incense.imageUrl}
-          alt={incense.name}
-          width={36}
-          height={36}
-          className="w-9 h-9 object-contain"
-          draggable={false}
-        />
-        {/* 残数バッジ */}
-        <span className={cn(
-          "absolute -bottom-1 -right-1 min-w-4 h-4 px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center border",
-          remaining > 0
-            ? "bg-blue-500 text-white border-white"
-            : "bg-gray-300 text-gray-500 border-white",
-        )}>
-          {remaining}
-        </span>
-        {/* 配置済みバッジ */}
-        {used > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-0.5 rounded-full text-[8px] font-bold flex items-center justify-center bg-orange-400 text-white border border-white">
-            {used}
-          </span>
-        )}
-      </div>
-      {/* +1 フロートアニメーション */}
-      {showPlus && (
-        <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[11px] font-bold text-green-500 pointer-events-none animate-bounce">
-          +1
+    <div
+      draggable={canDrag}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      data-tap-item
+      onClick={onTap}
+      title={`${incense.name}（残${remaining}）`}
+      className={cn(
+        "relative w-11 h-11 flex items-center justify-center rounded-xl select-none transition-all cursor-grab active:cursor-grabbing",
+        isDragging && "scale-90 opacity-60",
+        isTapSelected && "ring-2 ring-blue-400 scale-95",
+        wiggling && "animate-wiggle",
+      )}
+    >
+      <img
+        src={incense.imageUrl}
+        alt={incense.name}
+        width={40}
+        height={40}
+        className="w-10 h-10 object-contain drop-shadow-sm"
+        draggable={false}
+      />
+      {/* ×N バッジ（2個以上のとき） */}
+      {remaining >= 2 && (
+        <span className="absolute -bottom-1 -right-1 h-4 min-w-4 px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center bg-blue-500 text-white border border-white leading-none">
+          ×{remaining}
         </span>
       )}
     </div>
