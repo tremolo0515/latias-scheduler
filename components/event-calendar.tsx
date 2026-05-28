@@ -1102,9 +1102,9 @@ function InventoryTile({
         className="w-10 h-10 object-contain drop-shadow-sm"
         draggable={false}
       />
-      {/* ×N バッジ（2個以上のとき） */}
+      {/* ×N テキスト（2個以上のとき） */}
       {remaining >= 2 && (
-        <span className="absolute -bottom-1 -right-1 h-4 min-w-4 px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center bg-blue-500 text-white border border-white leading-none">
+        <span className="absolute bottom-0 right-0 text-[9px] font-black text-gray-900 leading-none drop-shadow-[0_0_2px_white]">
           ×{remaining}
         </span>
       )}
