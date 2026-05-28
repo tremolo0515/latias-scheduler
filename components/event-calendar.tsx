@@ -732,7 +732,13 @@ export function EventCalendar() {
           <div className="flex-1 min-w-0">
             {currentEvent.umouShop ? (
               <div className="rounded-xl border border-purple-200 bg-purple-50/60 p-2 flex flex-col gap-1">
-                <p className="text-[10px] font-semibold text-purple-700">🪶 うもう交換所</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-semibold text-purple-700">🪶 うもう交換所</p>
+                  <div className="flex items-center gap-0.5">
+                    <span className="text-[9px] font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
+                    <span className="text-[8px] text-purple-500">🪶</span>
+                  </div>
+                </div>
                 {currentEvent.umouShop.weeks.map((week, wi) => (
                   <div key={wi}>
                     <p className="text-[8px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
@@ -814,7 +820,15 @@ export function EventCalendar() {
 
         {/* 下段: 在庫パレット（幅広・D&D専用） */}
         <div className="rounded-xl border border-blue-100 bg-blue-50/40 px-3 py-2">
-          <p className="text-[9px] font-medium text-blue-400 mb-1.5">在庫パレット <span className="text-blue-300">— タップ or ドラッグで配置</span></p>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[9px] font-medium text-blue-400">在庫パレット <span className="text-blue-300">— タップ or ドラッグで配置</span></p>
+            <button
+              onClick={clearPlan}
+              className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
+            >
+              全て在庫に戻す
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             {eventItems.map(incense => {
               const qty = inventory[incense.id] ?? 0
@@ -847,21 +861,6 @@ export function EventCalendar() {
         </div>
       </section>
 
-      {/* ── ボタンエリア ── */}
-      {/* TODO: おすすめ使用日提案ボタンは一時的に非表示（handleSuggest / generatePlan は保持） */}
-      <div className="px-4 mb-2 flex items-center gap-2">
-        <button
-          onClick={clearPlan}
-          className="flex items-center px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-600 shadow-sm transition-colors whitespace-nowrap"
-        >
-          <span className="text-xs font-semibold">クリア</span>
-        </button>
-        <div className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 border border-purple-200">
-            <span className="text-sm">🪶</span>
-            <span className="text-xs text-purple-700 font-medium">合計必要うもう数</span>
-            <span className="text-sm font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
-          </div>
-      </div>
 
       {/* ── カレンダーグリッド ── */}
       <main
@@ -931,7 +930,6 @@ export function EventCalendar() {
                   const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
                   return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
                 })()}
-                cumulativeUmou={umouCumulative[day.dayIndex] ?? 0}
                 todayDayIndex={todayDayIndex}
                 onToggleSplitSleep={() => setDaySlots(prev => ({
                   ...prev,
@@ -986,7 +984,6 @@ export function EventCalendar() {
                 const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
                 return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
               })()}
-              cumulativeUmou={umouCumulative[day.dayIndex] ?? 0}
               todayDayIndex={todayDayIndex}
               onToggleSplitSleep={() => setDaySlots(prev => ({
                 ...prev,
@@ -1133,7 +1130,6 @@ interface DayCellProps {
   sableMax: number
   onSableCountChange2: (value: number) => void
   sableMax2: number
-  cumulativeUmou: number
   todayDayIndex: number
   onToggleSplitSleep: () => void
   mainIncenseId: string
@@ -1246,7 +1242,7 @@ function ItemSlot({
 function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
-  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax, onSableCountChange2, sableMax2, cumulativeUmou, todayDayIndex, onToggleSplitSleep,
+  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax, onSableCountChange2, sableMax2, todayDayIndex, onToggleSplitSleep,
   mainIncenseId, mainSableId,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
@@ -1291,7 +1287,8 @@ function DayCell({
             </span>
           </button>
         </div>
-        {cumulativeUmou > 0 && <span className="text-[8px] text-purple-600 font-semibold">累計🪶: {cumulativeUmou}</span>}
+        {/* 累計うもう表示は一時マスク */}
+        {/* {cumulativeUmou > 0 && <span className="text-[8px] text-purple-600 font-semibold">累計🪶: {cumulativeUmou}</span>} */}
       </div>
 
       {/* イベントバー用の予約スペース（EventBarsOverlay がここに重なる） */}
