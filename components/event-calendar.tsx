@@ -723,13 +723,13 @@ export function EventCalendar() {
       </header>
 
       {/* ── 在庫エリア ── */}
-      <section className="px-4 mb-2 flex flex-col gap-1.5">
+      <section className="mb-2 flex flex-col gap-1.5">
 
         {/* 上段: うもう交換所 + その他 を1枚のカードに統合 */}
         <div className="flex rounded-xl border border-gray-200 bg-white overflow-hidden">
 
           {/* うもう交換所 */}
-          <div className="flex-1 min-w-0 p-2 border-r border-gray-100/60">
+          <div className="flex-1 min-w-0 p-2" style={{ borderRight: "1px solid rgba(0,0,0,0.06)" }}>
             {currentEvent.umouShop ? (<>
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[10px] font-semibold text-purple-700">🪶 うもう交換所</p>
