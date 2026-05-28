@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -705,20 +705,20 @@ export function EventCalendar() {
                       const key = `${wi}-${ei}`
                       const val = shopCounts[key] ?? 0
                       const item = entry.itemId ? getIncenseById(entry.itemId) : null
-                      return (<>
+                      return (<Fragment key={`${wi}-${ei}`}>
                         {item
-                          ? <img key={`${ei}-img`} src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain" />
-                          : <span key={`${ei}-img`} />
+                          ? <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain" />
+                          : <span />
                         }
-                        <span key={`${ei}-name`} className="text-[11px] text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
-                        <span key={`${ei}-cost`} className="text-[11px] text-purple-400 whitespace-nowrap">{entry.umouCost}🪶</span>
-                        <span key={`${ei}-spacer`} />
-                        <button key={`${ei}-minus`} onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
+                        <span className="text-[11px] text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
+                        <span className="text-[11px] text-purple-400 whitespace-nowrap">{entry.umouCost}🪶</span>
+                        <span />
+                        <button onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
                           className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none">－</button>
-                        <span key={`${ei}-val`} className="text-[11px] font-bold text-gray-800 text-center">{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
-                        <button key={`${ei}-plus`} onClick={() => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, val + 1))}
+                        <span className="text-[11px] font-bold text-gray-800 text-center">{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
+                        <button onClick={() => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, val + 1))}
                           className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none">＋</button>
-                      </>)
+                      </Fragment>)
                     })}
                   </div>
                 </div>

@@ -307,7 +307,7 @@ export const EVENTS: PokeSleepEvent[] = [
     },
     itemIds: [
       "kaifuku", "shuuchuu", "kouun", "seichou", "nakayoshi", "pokemon",
-      "latios", "good-camp", "help-whistle", "master-sable", "latios-sable",
+      "latios", "latias", "good-camp", "help-whistle", "master-sable", "latios-sable",
     ],
     mainIncenseId: "latios",
     umouShop: {
@@ -317,6 +317,7 @@ export const EVENTS: PokeSleepEvent[] = [
           entries: [
             { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 2,  umouCost: 80  },
             { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 7,  umouCost: 160 },
+            { label: "❓ラティアスのおこう×1",       itemId: "latias",       itemQty: 1, maxCount: 7,  umouCost: 160 }, // TODO: 交換条件未確認 — 確定後に❓を削除
             { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 2,  umouCost: 60  },
             { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 10, umouCost: 120 },
           ],

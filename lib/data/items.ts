@@ -202,7 +202,7 @@ export const INCENSE_MASTERS: IncenseMaster[] = [
     name: "ラティオスのおこう",
     maxStock: 11,
     icon: "🔵",
-    imageUrl: "/img/okou_normal.png", // TODO: 正式画像（okou_latios.png）に差し替え
+    imageUrl: "/img/okou_latios.png", 
     effectType: "pokemon",
     effectShort: "ラティオス出現",
     effectDetail: "ラティオスが追加枠として出現する。こううんのおこうと組み合わせて大量のゆめのかけらを狙える。",
@@ -217,7 +217,7 @@ export const INCENSE_MASTERS: IncenseMaster[] = [
     name: "ラティアス/ラティオスサブレ",
     maxStock: 15,
     icon: "🍪",
-    imageUrl: "/img/poke_sable.png", // TODO: 正式画像（latios_sable.png）に差し替え
+    imageUrl: "/img/dragon_sable.png",
     effectType: "treat",
     effectShort: "ラティオスに使うおやつ（複数可）",
     effectDetail: "ラティオスのおこうと同時に設置して使用。マスターサブレと排他的に使用。個数を指定できる。",
