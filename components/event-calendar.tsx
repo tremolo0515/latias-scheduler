@@ -723,97 +723,87 @@ export function EventCalendar() {
       </header>
 
       {/* ── 在庫エリア ── */}
-      <section className="px-4 mb-2 flex flex-col gap-2">
+      <section className="mb-2 flex flex-col gap-1.5">
 
-        {/* 上段: 2列（うもう交換所 / その他） */}
-        <div className="flex gap-2">
+        {/* 上段: うもう交換所 + その他 を1枚のカードに統合 */}
+        <div className="mx-4 flex rounded-xl border border-gray-200 bg-white overflow-hidden">
 
           {/* うもう交換所 */}
-          <div className="flex-1 min-w-0">
-            {currentEvent.umouShop ? (
-              <div className="rounded-xl border border-purple-200 bg-purple-50/60 p-2 flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-semibold text-purple-700">🪶 うもう交換所</p>
-                  <div className="flex items-center gap-0.5">
-                    <span className="text-[9px] font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
-                    <span className="text-[8px] text-purple-500">🪶</span>
-                  </div>
+          <div className="flex-1 min-w-0 p-2 border-r border-gray-100">
+            {currentEvent.umouShop ? (<>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] font-semibold text-purple-700">🪶 うもう交換所</p>
+                <div className="flex items-center gap-0.5">
+                  <span className="text-[9px] font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
+                  <span className="text-[8px] text-purple-500">🪶</span>
                 </div>
-                {currentEvent.umouShop.weeks.map((week, wi) => (
-                  <div key={wi}>
-                    <p className="text-[8px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
-                    {week.entries.map((entry, ei) => {
-                      const key = `${wi}-${ei}`
-                      const val = shopCounts[key] ?? 0
-                      return (
-                        <div key={ei} className="flex items-center gap-1 py-0.5">
-                          <span className="text-[8px] text-gray-600 flex-1 leading-tight line-clamp-1" title={entry.label}>
-                            {entry.label}
-                          </span>
-                          <span className="text-[7px] text-purple-500 shrink-0">{entry.umouCost}🪶</span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={entry.maxCount}
-                            value={val}
-                            onChange={e => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, Math.max(0, Number(e.target.value))))}
-                            className="w-8 text-[9px] text-center border border-purple-200 rounded bg-white focus:outline-none focus:border-purple-400 py-0"
-                          />
-                          <span className="text-[7px] text-gray-400 shrink-0">/{entry.maxCount}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
               </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 flex flex-col gap-1 opacity-50">
-                <p className="text-[10px] font-semibold text-gray-500">🪶 うもう交換所</p>
-                <p className="text-[9px] text-gray-400">データなし</p>
-              </div>
+              {currentEvent.umouShop.weeks.map((week, wi) => (
+                <div key={wi} className="mb-1">
+                  <p className="text-[8px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
+                  {week.entries.map((entry, ei) => {
+                    const key = `${wi}-${ei}`
+                    const val = shopCounts[key] ?? 0
+                    const item = entry.itemId ? getIncenseById(entry.itemId) : null
+                    return (
+                      <div key={ei} className="flex items-center gap-1 py-0.5">
+                        {item
+                          ? <img src={item.imageUrl} alt={item.name} width={16} height={16} className="w-4 h-4 object-contain shrink-0" />
+                          : <span className="w-4 h-4 shrink-0" />
+                        }
+                        <span className="text-[8px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0" title={entry.label}>
+                          {entry.label}
+                        </span>
+                        <span className="text-[7px] text-purple-400 shrink-0 ml-1">{entry.umouCost}🪶</span>
+                        <button onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
+                          className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">－</button>
+                        <span className="text-[10px] font-bold text-gray-800 w-4 text-center shrink-0">{val}</span>
+                        <button onClick={() => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, val + 1))}
+                          className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">＋</button>
+                        <span className="text-[7px] text-gray-400 shrink-0">/{entry.maxCount}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </>) : (
+              <p className="text-[9px] text-gray-400">データなし</p>
             )}
           </div>
 
           {/* その他アイテム */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 p-2">
             {(() => {
               const shopItemIds = new Set(
                 (currentEvent.umouShop?.weeks ?? []).flatMap(w => w.entries.map(e => e.itemId)).filter(Boolean)
               )
               const otherItems = eventItems.filter(i => !shopItemIds.has(i.id))
-              if (otherItems.length === 0) return (
-                <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 opacity-50 h-full">
-                  <p className="text-[10px] font-semibold text-gray-500">その他</p>
-                </div>
-              )
-              return (
-                <div className="rounded-xl border border-gray-200 bg-white p-2 flex flex-col gap-1">
-                  <p className="text-[10px] font-semibold text-gray-500">その他</p>
-                  {otherItems.map(item => {
-                    const qty = inventory[item.id] ?? 0
-                    const max = item.maxStock ?? (item.id === "good-camp" ? 2 : 99)
-                    return (
-                      <div key={item.id} className="flex items-center gap-1">
-                        <img src={item.imageUrl} alt={item.name} width={18} height={18} className="w-4.5 h-4.5 object-contain shrink-0" />
-                        <span className="text-[8px] text-gray-600 flex-1 leading-tight line-clamp-1">{item.name}</span>
-                        <button onClick={() => setInventory(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
-                          className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none">－</button>
-                        <span className="text-[10px] font-bold text-gray-800 w-3.5 text-center">{qty}</span>
-                        <button onClick={() => { setInventory(prev => ({ ...prev, [item.id]: Math.min(max, qty + 1) })); flashItem(item.id) }}
-                          className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none">＋</button>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
+              return (<>
+                <p className="text-[10px] font-semibold text-gray-600 mb-1">その他</p>
+                {otherItems.map(item => {
+                  const qty = inventory[item.id] ?? 0
+                  const max = item.maxStock ?? (item.id === "good-camp" ? 2 : 99)
+                  return (
+                    <div key={item.id} className="flex items-center gap-1 py-0.5">
+                      <img src={item.imageUrl} alt={item.name} width={16} height={16} className="w-4 h-4 object-contain shrink-0" />
+                      <span className="text-[8px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}</span>
+                      <button onClick={() => setInventory(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
+                        className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">－</button>
+                      <span className="text-[10px] font-bold text-gray-800 w-4 text-center shrink-0">{qty}</span>
+                      <button onClick={() => { setInventory(prev => ({ ...prev, [item.id]: Math.min(max, qty + 1) })); flashItem(item.id) }}
+                        className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">＋</button>
+                    </div>
+                  )
+                })}
+              </>)
             })()}
           </div>
         </div>
 
-        {/* 下段: 在庫パレット（幅広・D&D専用） */}
-        <div className="rounded-xl border border-blue-100 bg-blue-50/40 px-3 py-2">
+        {/* 下段: 在庫パレット */}
+        <div className="mx-4 rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2">
           <div className="flex items-center justify-between mb-1.5">
-            <p className="text-[9px] font-medium text-blue-400">在庫パレット <span className="text-blue-300">— タップ or ドラッグで配置</span></p>
+            <p className="text-[9px] font-medium text-gray-500">在庫パレット <span className="text-gray-400">— タップ or ドラッグで配置</span></p>
             <button
               onClick={clearPlan}
               className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
