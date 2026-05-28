@@ -757,8 +757,7 @@ export function EventCalendar() {
                         <span className="text-[7px] text-purple-400 shrink-0 ml-1">{entry.umouCost}🪶</span>
                         <button onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
                           className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">－</button>
-                        <span className="text-[10px] font-bold text-gray-800 w-4 text-center shrink-0">{val}</span>
-                        <span className="text-[10px] text-gray-400 shrink-0 w-6 text-left">/{entry.maxCount}</span>
+                        <span className="text-[10px] font-bold text-gray-800 shrink-0 text-center" style={{minWidth:"2.5rem"}}>{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
                         <button onClick={() => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, val + 1))}
                           className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">＋</button>
                       </div>
