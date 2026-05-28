@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { INCENSE_MASTERS, getIncenseById, type IncenseMaster } from "@/lib/data/items"
-import { EVENTS, buildEventDays, type PokeSleepEvent, type UmouPriceTable, type ExchangeShopEntry } from "@/lib/data/events"
+import { EVENTS, buildEventDays, type PokeSleepEvent, type ExchangeShopEntry } from "@/lib/data/events"
 import type { DayInfo } from "@/lib/types/calendar"
 
 // ─── 型定義 ────────────────────────────────────────────────
@@ -45,70 +45,39 @@ interface DaySlots {
 
 const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, slot3: null, slot4: null, splitSleep: false, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null, sableCount: 1, sableSlot2: null, sableCount2: 1, carryoverSlot: null })
 
-// ─── うもう必要数計算 ─────────────────────────────────────────
-/**
- * おこう n 個 + サブレ m 個を最小うもうで入手するためのコストを返す。
- * イベント定義の UmouPriceTable を使用（汎用版）。
- */
+// ─── うもう必要数計算（提案ロジック復活時に使用 — 現在は無効化）─────────────────
+/*
 function calcUmou(
   nOkouW1: number, nOkouW2: number,
   nSableW1: number, nSableW2: number,
   prices: UmouPriceTable
 ): number {
   let cost = 0
-
-  // ── おこう ──
   const okouW1Stock: [number, number][] = prices.okouW1.map(([s, p]) => [s, p])
   let rem = nOkouW1
   for (const lot of okouW1Stock) {
-    const buy = Math.min(rem, lot[0])
-    cost += buy * lot[1]
-    lot[0] -= buy
-    rem -= buy
+    const buy = Math.min(rem, lot[0]); cost += buy * lot[1]; lot[0] -= buy; rem -= buy
     if (rem <= 0) break
   }
   if (nOkouW2 > 0) {
-    const w2Available = ([...prices.okouW2.map(([s, p]) => [s, p] as [number, number])].concat(
-      okouW1Stock.filter(([s]) => s > 0)
-    )).sort((a, b) => a[1] - b[1])
+    const w2Available = ([...prices.okouW2.map(([s, p]) => [s, p] as [number, number])].concat(okouW1Stock.filter(([s]) => s > 0))).sort((a, b) => a[1] - b[1])
     rem = nOkouW2
-    for (const [stock, price] of w2Available) {
-      const buy = Math.min(rem, stock)
-      cost += buy * price
-      rem -= buy
-      if (rem <= 0) break
-    }
+    for (const [stock, price] of w2Available) { const buy = Math.min(rem, stock); cost += buy * price; rem -= buy; if (rem <= 0) break }
   }
-
-  // ── サブレ ──
   const free = prices.sableFreeCount
   const sableW1Paid = nSableW1 >= free ? nSableW1 - free : 0
   const sableW2Paid = nSableW1 >= free ? nSableW2 : Math.max(0, nSableW2 - (free - nSableW1))
-
   const sableW1Stock: [number, number][] = prices.sableW1.map(([s, p]) => [s, p])
   rem = sableW1Paid
-  for (const lot of sableW1Stock) {
-    const buy = Math.min(rem, lot[0])
-    cost += buy * lot[1]
-    lot[0] -= buy
-    rem -= buy
-    if (rem <= 0) break
-  }
+  for (const lot of sableW1Stock) { const buy = Math.min(rem, lot[0]); cost += buy * lot[1]; lot[0] -= buy; rem -= buy; if (rem <= 0) break }
   if (sableW2Paid > 0) {
-    const w2SableAvailable = ([...prices.sableW2.map(([s, p]) => [s, p] as [number, number])].concat(
-      sableW1Stock.filter(([s]) => s > 0)
-    )).sort((a, b) => a[1] - b[1])
+    const w2SableAvailable = ([...prices.sableW2.map(([s, p]) => [s, p] as [number, number])].concat(sableW1Stock.filter(([s]) => s > 0))).sort((a, b) => a[1] - b[1])
     rem = sableW2Paid
-    for (const [stock, price] of w2SableAvailable) {
-      const buy = Math.min(rem, stock)
-      cost += buy * price
-      rem -= buy
-      if (rem <= 0) break
-    }
+    for (const [stock, price] of w2SableAvailable) { const buy = Math.min(rem, stock); cost += buy * price; rem -= buy; if (rem <= 0) break }
   }
-
   return cost
 }
+*/
 
 // ─── 提案ロジック（一時的に無効化 — 復活させる際はコメントを外す）─────────────────
 // ボタンを復活させる場合:
@@ -357,26 +326,11 @@ export function EventCalendar() {
     if (e.touches.length < 2) pinchRef.current = null
   }
 
-  // うもう計算: dayIndex 0..D までの累積必要うもう数
-  const umouCumulative: Record<number, number> = (() => {
-    const result: Record<number, number> = {}
-    let nOkouW1 = 0, nOkouW2 = 0
-    let nSableW1 = 0, nSableW2 = 0
-    const mainId = currentEvent.umouPrices.mainIncenseId
-    const sableId = currentEvent.umouPrices.mainSableId
-    for (const day of eventDays) {
-      const s = daySlots[day.dayIndex]
-      if (!s) continue
-      const okouCount = (s.slot1 === mainId ? 1 : 0) + (s.slot2 === mainId ? 1 : 0) + (s.slot3 === mainId ? 1 : 0) + (s.slot4 === mainId ? 1 : 0) + (s.carryoverSlot === mainId ? 1 : 0)
-      const sableCount = (s.sableSlot === sableId ? s.sableCount : 0) + (s.sableSlot2 === sableId ? s.sableCount2 : 0)
-      if (day.dayIndex < 7) { nOkouW1 += okouCount; nSableW1 += sableCount }
-      else                  { nOkouW2 += okouCount; nSableW2 += sableCount }
-      result[day.dayIndex] = calcUmou(nOkouW1, nOkouW2, nSableW1, nSableW2, currentEvent.umouPrices)
-    }
-    return result
-  })()
 
-  const totalUmou = umouCumulative[13] ?? 0
+  // 交換所で交換した合計うもう数（スロット配置とは無関係）
+  const totalUmou = (currentEvent.umouShop?.weeks ?? []).flatMap((week, wi) =>
+    week.entries.map((entry, ei) => (shopCounts[`${wi}-${ei}`] ?? 0) * entry.umouCost)
+  ).reduce((a, b) => a + b, 0)
 
   // 今日の dayIndex（イベント期間外なら -1）
   const todayDayIndex = (() => {
@@ -736,15 +690,15 @@ export function EventCalendar() {
           <div className="flex-1 min-w-0 p-2" style={{ borderRight: "1px solid rgba(0,0,0,0.06)" }}>
             {currentEvent.umouShop ? (<>
               <div className="flex items-center justify-between mb-1">
-                <p className="text-[10px] font-semibold text-purple-700">🪶 うもう交換所</p>
+                <p className="text-xs font-semibold text-purple-700">🪶 うもう交換所</p>
                 <div className="flex items-center gap-0.5">
-                  <span className="text-[9px] font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
-                  <span className="text-[8px] text-purple-500">🪶</span>
+                  <span className="text-xs font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
+                  <span className="text-[10px] text-purple-500">🪶</span>
                 </div>
               </div>
               {currentEvent.umouShop.weeks.map((week, wi) => (
                 <div key={wi} className="mb-1">
-                  <p className="text-[8px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
+                  <p className="text-[11px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
                   {/* 全行を1つのgridに入れることでうもう量列が縦揃え */}
                   <div className="grid items-center" style={{ gridTemplateColumns: "1.25rem auto auto 1fr 1.25rem auto 1.25rem", rowGap: "3px", columnGap: "10px" }}>
                     {week.entries.map((entry, ei) => {
@@ -756,14 +710,14 @@ export function EventCalendar() {
                           ? <img key={`${ei}-img`} src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain" />
                           : <span key={`${ei}-img`} />
                         }
-                        <span key={`${ei}-name`} className="text-sm text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
-                        <span key={`${ei}-cost`} className="text-xs text-purple-400 whitespace-nowrap">{entry.umouCost}🪶</span>
+                        <span key={`${ei}-name`} className="text-[11px] text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
+                        <span key={`${ei}-cost`} className="text-[11px] text-purple-400 whitespace-nowrap">{entry.umouCost}🪶</span>
                         <span key={`${ei}-spacer`} />
                         <button key={`${ei}-minus`} onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
-                          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-sm font-bold leading-none">－</button>
-                        <span key={`${ei}-val`} className="text-sm font-bold text-gray-800 text-center">{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
+                          className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none">－</button>
+                        <span key={`${ei}-val`} className="text-[11px] font-bold text-gray-800 text-center">{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
                         <button key={`${ei}-plus`} onClick={() => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, val + 1))}
-                          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-sm font-bold leading-none">＋</button>
+                          className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none">＋</button>
                       </>)
                     })}
                   </div>
@@ -782,19 +736,19 @@ export function EventCalendar() {
               )
               const otherItems = eventItems.filter(i => !shopItemIds.has(i.id))
               return (<>
-                <p className="text-[10px] font-semibold text-gray-600 mb-1">その他</p>
+                <p className="text-xs font-semibold text-gray-600 mb-1">その他</p>
                 {otherItems.map(item => {
                   const qty = inventory[item.id] ?? 0
                   const max = item.maxStock ?? (item.id === "good-camp" ? 2 : 99)
                   return (
                     <div key={item.id} className="flex items-center gap-1 py-0.5">
                       <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain shrink-0" />
-                      <span className="text-sm text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}</span>
+                      <span className="text-[11px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}</span>
                       <button onClick={() => setInventory(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
-                        className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-sm font-bold leading-none shrink-0">－</button>
-                      <span className="text-sm font-bold text-gray-800 w-6 text-center shrink-0">{qty}</span>
+                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none shrink-0">－</button>
+                      <span className="text-[11px] font-bold text-gray-800 w-5 text-center shrink-0">{qty}</span>
                       <button onClick={() => { setInventory(prev => ({ ...prev, [item.id]: Math.min(max, qty + 1) })); flashItem(item.id) }}
-                        className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-sm font-bold leading-none shrink-0">＋</button>
+                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none shrink-0">＋</button>
                     </div>
                   )
                 })}
@@ -1202,7 +1156,7 @@ function ItemSlot({
                 onClick={() => onCountChange!(Math.max(1, count! - 1))}
                 className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-gray-400 hover:text-red-400 leading-none"
               >−</button>
-              <span className="flex-1 text-center text-[8px] font-bold text-gray-600">{count}</span>
+              <span className="flex-1 text-center text-[9px] font-bold text-gray-600">{count}</span>
               <button
                 onClick={() => onCountChange!(Math.min(maxCount ?? 99, count! + 1))}
                 className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-gray-400 hover:text-blue-400 leading-none"
@@ -1216,7 +1170,7 @@ function ItemSlot({
           >−</button>
         </>
       ) : label ? (
-        <span className={cn("relative text-[7px] leading-tight text-center px-0.5 whitespace-pre-line", localOver ? "text-blue-500" : monday ? "text-amber-500" : "text-gray-300")}>{localOver ? "↓" : label}</span>
+        <span className={cn("relative text-[9px] leading-tight text-center px-0.5 whitespace-pre-line", localOver ? "text-blue-500" : monday ? "text-amber-500" : "text-gray-300")}>{localOver ? "↓" : label}</span>
       ) : (
         <span className={cn("relative text-[8px]", localOver ? "text-blue-500" : "text-gray-400")}>{localOver ? "↓" : ""}</span>
       )}
@@ -1252,7 +1206,7 @@ function DayCell({
       {/* 日付 */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-1">
-          <span className={cn("text-xs font-bold", isSun && "text-rose-500", isSat && "text-sky-600", !isSat && !isSun && "text-gray-700")}>
+          <span className={cn("text-sm font-bold", isSun && "text-rose-500", isSat && "text-sky-600", !isSat && !isSun && "text-gray-700")}>
             {day.date}
           </span>
           <button
@@ -1260,7 +1214,7 @@ function DayCell({
             className="flex items-center gap-0.5"
             title="分割睡眠"
           >
-            <span className={cn("text-[7px] font-medium", slots.splitSleep ? "text-blue-500" : "text-gray-400")}>分割睡眠</span>
+            <span className={cn("text-[9px] font-medium", slots.splitSleep ? "text-blue-500" : "text-gray-400")}>分割睡眠</span>
             <span className={cn(
               "relative w-6 h-3.5 rounded-full transition-colors duration-200 shrink-0",
               slots.splitSleep ? "bg-blue-500" : "bg-gray-400"
@@ -1453,7 +1407,7 @@ function EventBarsOverlay({
                 onBarClick(ev.id, rect.left, rect.bottom)
               }}
               className={cn(
-                "w-full h-5 px-1.5 rounded text-[8px] font-semibold transition-all text-left leading-5 flex items-center gap-1",
+                "w-full h-5 px-1.5 rounded text-[10px] font-semibold transition-all text-left leading-5 flex items-center gap-1",
                 ev.barColor, ev.textColor,
                 activeTooltipId === ev.id && "ring-1 ring-white/50",
               )}
