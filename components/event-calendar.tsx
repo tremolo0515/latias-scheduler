@@ -318,10 +318,11 @@ export function EventCalendar() {
     }
   }
 
-  // ── 在庫: +1アニメーション用 (itemId → flash count) ──
-  const [flashItems, setFlashItems] = useState<Record<string, number>>({})
+  // ── 在庫: wiggleアニメーション用カウンター (itemId → increment key) ──
+  // key が変わると InventoryTile が再マウントされ、CSS animation が確実に再生される
+  const [wiggleKeys, setWiggleKeys] = useState<Record<string, number>>({})
   function flashItem(id: string) {
-    setFlashItems(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
+    setWiggleKeys(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
   }
 
   const [dragId, setDragId] = useState<string | null>(null)
@@ -820,19 +821,15 @@ export function EventCalendar() {
               const used = usedCount(incense.id)
               const remaining = Math.max(0, qty - used)
               const canDrag = remaining > 0
-              const isFlashing = (flashItems[incense.id] ?? 0) > 0
-              // 在庫0でもflash中は描画（wiggleを見せるため）
-              if (remaining === 0 && !isFlashing) return null
+              if (remaining === 0) return null
               return (
                 <InventoryTile
-                  key={incense.id}
+                  key={`${incense.id}-${wiggleKeys[incense.id] ?? 0}`}
                   incense={incense}
                   remaining={remaining}
                   canDrag={canDrag}
                   isDragging={dragId === incense.id}
                   isTapSelected={tapSelectedId === incense.id}
-                  isFlashing={isFlashing}
-                  onFlashEnd={() => setFlashItems(prev => ({ ...prev, [incense.id]: Math.max(0, (prev[incense.id] ?? 1) - 1) }))}
                   onDragStart={(e) => {
                     setDragId(incense.id)
                     const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
@@ -1064,7 +1061,6 @@ export function EventCalendar() {
 
 function InventoryTile({
   incense, remaining, canDrag, isDragging, isTapSelected,
-  isFlashing, onFlashEnd,
   onDragStart, onDragEnd, onTap,
 }: {
   incense: IncenseMaster
@@ -1072,32 +1068,16 @@ function InventoryTile({
   canDrag: boolean
   isDragging: boolean
   isTapSelected: boolean
-  isFlashing: boolean
-  onFlashEnd: () => void
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
   onTap: () => void
 }) {
-  const [wiggling, setWiggling] = useState(false)
-  // マウント直後に isFlashing=true なら即アニメーション（在庫0→1で新規マウントされるケース）
-  const didMount = useRef(false)
+  // マウント時に wiggle を1回再生（key変更 = 再マウントで自動トリガー）
+  const [wiggling, setWiggling] = useState(true)
   useEffect(() => {
-    if (!didMount.current) {
-      didMount.current = true
-      if (isFlashing) {
-        setWiggling(true)
-        const t = setTimeout(() => { setWiggling(false); onFlashEnd() }, 450)
-        return () => clearTimeout(t)
-      }
-      return
-    }
-    if (isFlashing) {
-      setWiggling(true)
-      const t = setTimeout(() => { setWiggling(false); onFlashEnd() }, 450)
-      return () => clearTimeout(t)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFlashing])
+    const t = setTimeout(() => setWiggling(false), 450)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
     <div
