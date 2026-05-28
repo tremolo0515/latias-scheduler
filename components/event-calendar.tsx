@@ -1104,7 +1104,7 @@ function InventoryTile({
       />
       {/* ×N テキスト（2個以上のとき） */}
       {remaining >= 2 && (
-        <span className="absolute bottom-0 right-0 text-[9px] font-black text-gray-900 leading-none drop-shadow-[0_0_2px_white]">
+        <span className="absolute bottom-0 right-0 text-xs font-black text-gray-900 leading-none drop-shadow-[0_0_3px_white]">
           ×{remaining}
         </span>
       )}
