@@ -742,7 +742,7 @@ export function EventCalendar() {
                 <div key={wi} className="mb-1">
                   <p className="text-[8px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
                   {/* 全行を1つのgridに入れることでうもう量列が縦揃え */}
-                  <div className="grid items-center" style={{ gridTemplateColumns: "1rem auto auto 1fr 1rem auto 1rem", gap: "2px 4px" }}>
+                  <div className="grid items-center" style={{ gridTemplateColumns: "1rem auto auto 1fr 1rem auto 1rem", rowGap: "2px", columnGap: "12px" }}>
                     {week.entries.map((entry, ei) => {
                       const key = `${wi}-${ei}`
                       const val = shopCounts[key] ?? 0
