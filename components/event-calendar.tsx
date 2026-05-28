@@ -547,11 +547,13 @@ export function EventCalendar() {
       const POKEMON_LATIAS = new Set(["pokemon", "latias"])
       if (POKEMON_LATIAS.has(id) && other && POKEMON_LATIAS.has(other)) return
     }
+    const curMainId = currentEvent.mainIncenseId
+    const curSableId = currentEvent.umouPrices.mainSableId
     if (slot === "mondaySlot"    && id !== "help-whistle") return
     if (slot === "campSlot"      && id !== "good-camp")    return
-    if (slot === "sableSlot"     && id !== "master-sable" && id !== "latias-sable") return
-    if (slot === "sableSlot2"    && id !== "master-sable" && id !== "latias-sable") return
-    if (slot === "carryoverSlot" && id !== "latias") return
+    if (slot === "sableSlot"     && id !== "master-sable" && id !== curSableId) return
+    if (slot === "sableSlot2"    && id !== "master-sable" && id !== curSableId) return
+    if (slot === "carryoverSlot" && id !== curMainId) return
     if (slot === "carryoverSlot" && dayIndex !== 13) return
 
     const effectiveUsed = tapSource ? usedCount(id) - 1 : usedCount(id)
@@ -620,28 +622,30 @@ export function EventCalendar() {
   }
 
   function changeSableCount(dayIndex: number, value: number) {
+    const sid = currentEvent.umouPrices.mainSableId
     setDaySlots(prev => {
       const s = prev[dayIndex]
-      if (s.sableSlot !== "latias-sable") return prev
+      if (s.sableSlot !== sid) return prev
       const otherUsed = Object.entries(prev)
         .filter(([di]) => Number(di) !== dayIndex)
-        .reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
-      const selfOther = s.sableSlot2 === "latias-sable" ? s.sableCount2 : 0
-      const max = (inventory["latias-sable"] ?? 0) - otherUsed - selfOther
+        .reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+      const selfOther = s.sableSlot2 === sid ? s.sableCount2 : 0
+      const max = (inventory[sid] ?? 0) - otherUsed - selfOther
       const newCount = Math.max(1, Math.min(max, value))
       return { ...prev, [dayIndex]: { ...s, sableCount: newCount } }
     })
   }
 
   function changeSableCount2(dayIndex: number, value: number) {
+    const sid = currentEvent.umouPrices.mainSableId
     setDaySlots(prev => {
       const s = prev[dayIndex]
-      if (s.sableSlot2 !== "latias-sable") return prev
+      if (s.sableSlot2 !== sid) return prev
       const otherUsed = Object.entries(prev)
         .filter(([di]) => Number(di) !== dayIndex)
-        .reduce((sum, [, ds]) => sum + (ds.sableSlot === "latias-sable" ? ds.sableCount : 0) + (ds.sableSlot2 === "latias-sable" ? ds.sableCount2 : 0), 0)
-      const selfOther = s.sableSlot === "latias-sable" ? s.sableCount : 0
-      const max = (inventory["latias-sable"] ?? 0) - otherUsed - selfOther
+        .reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+      const selfOther = s.sableSlot === sid ? s.sableCount : 0
+      const max = (inventory[sid] ?? 0) - otherUsed - selfOther
       const newCount = Math.max(1, Math.min(max, value))
       return { ...prev, [dayIndex]: { ...s, sableCount2: newCount } }
     })
@@ -742,24 +746,24 @@ export function EventCalendar() {
                 <div key={wi} className="mb-1">
                   <p className="text-[8px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
                   {/* 全行を1つのgridに入れることでうもう量列が縦揃え */}
-                  <div className="grid items-center" style={{ gridTemplateColumns: "1rem auto auto 1fr 1rem auto 1rem", rowGap: "2px", columnGap: "12px" }}>
+                  <div className="grid items-center" style={{ gridTemplateColumns: "1.25rem auto auto 1fr 1.25rem auto 1.25rem", rowGap: "3px", columnGap: "10px" }}>
                     {week.entries.map((entry, ei) => {
                       const key = `${wi}-${ei}`
                       const val = shopCounts[key] ?? 0
                       const item = entry.itemId ? getIncenseById(entry.itemId) : null
                       return (<>
                         {item
-                          ? <img key={`${ei}-img`} src={item.imageUrl} alt={item.name} width={16} height={16} className="w-4 h-4 object-contain" />
+                          ? <img key={`${ei}-img`} src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain" />
                           : <span key={`${ei}-img`} />
                         }
-                        <span key={`${ei}-name`} className="text-[8px] text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
-                        <span key={`${ei}-cost`} className="text-[7px] text-purple-400 whitespace-nowrap">{entry.umouCost}🪶</span>
+                        <span key={`${ei}-name`} className="text-sm text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
+                        <span key={`${ei}-cost`} className="text-xs text-purple-400 whitespace-nowrap">{entry.umouCost}🪶</span>
                         <span key={`${ei}-spacer`} />
                         <button key={`${ei}-minus`} onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
-                          className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none">－</button>
-                        <span key={`${ei}-val`} className="text-[10px] font-bold text-gray-800 text-center">{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
+                          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-sm font-bold leading-none">－</button>
+                        <span key={`${ei}-val`} className="text-sm font-bold text-gray-800 text-center">{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
                         <button key={`${ei}-plus`} onClick={() => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, val + 1))}
-                          className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none">＋</button>
+                          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-sm font-bold leading-none">＋</button>
                       </>)
                     })}
                   </div>
@@ -784,13 +788,13 @@ export function EventCalendar() {
                   const max = item.maxStock ?? (item.id === "good-camp" ? 2 : 99)
                   return (
                     <div key={item.id} className="flex items-center gap-1 py-0.5">
-                      <img src={item.imageUrl} alt={item.name} width={16} height={16} className="w-4 h-4 object-contain shrink-0" />
-                      <span className="text-[8px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}</span>
+                      <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain shrink-0" />
+                      <span className="text-sm text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}</span>
                       <button onClick={() => setInventory(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
-                        className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">－</button>
-                      <span className="text-[10px] font-bold text-gray-800 w-4 text-center shrink-0">{qty}</span>
+                        className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-sm font-bold leading-none shrink-0">－</button>
+                      <span className="text-sm font-bold text-gray-800 w-6 text-center shrink-0">{qty}</span>
                       <button onClick={() => { setInventory(prev => ({ ...prev, [item.id]: Math.min(max, qty + 1) })); flashItem(item.id) }}
-                        className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">＋</button>
+                        className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-sm font-bold leading-none shrink-0">＋</button>
                     </div>
                   )
                 })}
@@ -1152,7 +1156,7 @@ function ItemSlot({
         item
           ? isTapSelected
             ? "bg-blue-100 border-blue-400 ring-2 ring-blue-300"
-            : itemId === "latias" || itemId === "latias-sable"
+            : (item?.effectType === "pokemon" || item?.effectType === "treat")
               ? "bg-purple-50 border-purple-300 shadow-[0_0_6px_1px_rgba(168,85,247,0.25)]"
               : "bg-gray-100 border-gray-300"
           : localOver || isTapTarget
