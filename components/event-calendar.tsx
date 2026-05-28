@@ -725,7 +725,7 @@ export function EventCalendar() {
       {/* ── 在庫エリア ── */}
       <section className="px-4 mb-2 flex flex-col gap-2">
 
-        {/* 上段: 3列（うもう交換所 / ダイヤ交換所 / その他） */}
+        {/* 上段: 2列（うもう交換所 / その他） */}
         <div className="flex gap-2">
 
           {/* うもう交換所 */}
@@ -772,14 +772,6 @@ export function EventCalendar() {
                 <p className="text-[9px] text-gray-400">データなし</p>
               </div>
             )}
-          </div>
-
-          {/* ダイヤ交換所 */}
-          <div className="flex-1 min-w-0">
-            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 flex flex-col gap-1 h-full opacity-50">
-              <p className="text-[10px] font-semibold text-gray-500">💎 ダイヤ交換所</p>
-              <p className="text-[9px] text-gray-400">Coming soon</p>
-            </div>
           </div>
 
           {/* その他アイテム */}
