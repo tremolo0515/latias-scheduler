@@ -723,13 +723,13 @@ export function EventCalendar() {
       </header>
 
       {/* ── 在庫エリア ── */}
-      <section className="mb-2 flex flex-col gap-1.5">
+      <section className="px-4 mb-2 flex flex-col gap-1.5">
 
         {/* 上段: うもう交換所 + その他 を1枚のカードに統合 */}
-        <div className="mx-4 flex rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="flex rounded-xl border border-gray-200 bg-white overflow-hidden">
 
           {/* うもう交換所 */}
-          <div className="flex-1 min-w-0 p-2 border-r border-gray-100">
+          <div className="flex-1 min-w-0 p-2 border-r border-gray-100/60">
             {currentEvent.umouShop ? (<>
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[10px] font-semibold text-purple-700">🪶 うもう交換所</p>
@@ -758,9 +758,9 @@ export function EventCalendar() {
                         <button onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
                           className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">－</button>
                         <span className="text-[10px] font-bold text-gray-800 w-4 text-center shrink-0">{val}</span>
+                        <span className="text-[10px] text-gray-400 shrink-0">/{entry.maxCount}</span>
                         <button onClick={() => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, val + 1))}
                           className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[10px] font-bold leading-none shrink-0">＋</button>
-                        <span className="text-[7px] text-gray-400 shrink-0">/{entry.maxCount}</span>
                       </div>
                     )
                   })}
@@ -801,7 +801,7 @@ export function EventCalendar() {
         </div>
 
         {/* 下段: 在庫パレット */}
-        <div className="mx-4 rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2">
+        <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2">
           <div className="flex items-center justify-between mb-1.5">
             <p className="text-[9px] font-medium text-gray-500">在庫パレット <span className="text-gray-400">— タップ or ドラッグで配置</span></p>
             <button
