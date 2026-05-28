@@ -314,11 +314,15 @@ export function EventCalendar() {
         ...inv,
         [entry.itemId!]: Math.max(0, (inv[entry.itemId!] ?? 0) + delta * entry.itemQty),
       }))
+      if (delta > 0) flashItem(entry.itemId)
     }
   }
 
-  // ── 在庫: 鉛筆編集モード (itemId → true) ──
-  const [editingInventory, setEditingInventory] = useState<Record<string, boolean>>({})
+  // ── 在庫: +1アニメーション用 (itemId → flash count) ──
+  const [flashItems, setFlashItems] = useState<Record<string, number>>({})
+  function flashItem(id: string) {
+    setFlashItems(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
+  }
 
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragSource, setDragSource] = useState<{ dayIndex: number; slot: keyof DaySlots } | null>(null)
@@ -765,86 +769,79 @@ export function EventCalendar() {
               <p className="text-[10px] font-semibold text-gray-500">💎 ダイヤ交換所</p>
               <p className="text-[9px] text-gray-400">Coming soon</p>
             </div>
+
+            {/* ── その他アイテム（交換所非対象） ── */}
+            {(() => {
+              const shopItemIds = new Set(
+                (currentEvent.umouShop?.weeks ?? []).flatMap(w => w.entries.map(e => e.itemId)).filter(Boolean)
+              )
+              const otherItems = eventItems.filter(i => !shopItemIds.has(i.id))
+              if (otherItems.length === 0) return null
+              return (
+                <div className="rounded-xl border border-gray-200 bg-white p-2 flex flex-col gap-1">
+                  <p className="text-[10px] font-semibold text-gray-500">その他アイテム</p>
+                  {otherItems.map(item => {
+                    const qty = inventory[item.id] ?? 0
+                    const max = item.maxStock ?? (item.id === "good-camp" ? 2 : 99)
+                    return (
+                      <div key={item.id} className="flex items-center gap-1.5">
+                        <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain shrink-0" />
+                        <span className="text-[9px] text-gray-600 flex-1 leading-tight line-clamp-1">{item.name}</span>
+                        <button
+                          onClick={() => {
+                            const next = Math.max(0, qty - 1)
+                            setInventory(prev => ({ ...prev, [item.id]: next }))
+                          }}
+                          className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 text-xs font-bold leading-none"
+                        >－</button>
+                        <span className="text-[10px] font-bold text-gray-800 w-4 text-center">{qty}</span>
+                        <button
+                          onClick={() => {
+                            const next = Math.min(max, qty + 1)
+                            setInventory(prev => ({ ...prev, [item.id]: next }))
+                            flashItem(item.id)
+                          }}
+                          className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 text-xs font-bold leading-none"
+                        >＋</button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
 
-          {/* ── 右: 在庫 ── */}
+          {/* ── 右: 在庫パレット（D&D専用） ── */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[10px] text-gray-500">
-                <span className="font-medium text-gray-700">在庫入力</span>
-                <span className="ml-1.5 text-gray-400">→ タップ or ドラッグで配置</span>
-              </p>
-              <button
-                onClick={() => setInventory(prev => ({ ...prev, ...Object.fromEntries(eventItems.map(i => [i.id, 0])) }))}
-                className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
-              >
-                リセット
-              </button>
-            </div>
-
-            {/* 2列: おこう列 ｜ その他アイテム列 */}
-            <div className="flex gap-2">
-              {/* おこう列 */}
-              <div className="flex-1 flex flex-col gap-1">
-                <p className="text-[9px] font-semibold text-gray-400 mb-0.5">おこう</p>
-                {eventItems.filter(i => ["energy","exp","shard","pokemon-exp","chance","pokemon"].includes(i.effectType)).map(incense => {
-                  const qty = inventory[incense.id] ?? 0
-                  const used = usedCount(incense.id)
-                  const canDrag = qty > 0 && used < qty
-                  return (
-                    <InventoryRow
-                      key={incense.id}
-                      incense={incense}
-                      qty={qty}
-                      used={used}
-                      canDrag={canDrag}
-                      isDragging={dragId === incense.id}
-                      isTapSelected={tapSelectedId === incense.id}
-                      isEditing={editingInventory[incense.id] ?? false}
-                      onEditToggle={() => setEditingInventory(prev => ({ ...prev, [incense.id]: !prev[incense.id] }))}
-                      onDragStart={(e) => {
-                        setDragId(incense.id)
-                        const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
-                        if (imgEl) e.dataTransfer.setDragImage(imgEl, 16, 16)
-                      }}
-                      onDragEnd={() => { setDragId(null); setDragSource(null) }}
-                      onTap={() => { if (canDrag) setTapSelectedId(prev => prev === incense.id ? null : incense.id) }}
-                      onQtyChange={(v) => { setInventory(prev => ({ ...prev, [incense.id]: v })); setEditingInventory(prev => ({ ...prev, [incense.id]: false })) }}
-                    />
-                  )
-                })}
-              </div>
-
-              {/* その他アイテム列 */}
-              <div className="flex-1 flex flex-col gap-1">
-                <p className="text-[9px] font-semibold text-gray-400 mb-0.5">その他</p>
-                {eventItems.filter(i => ["camp","treat","whistle"].includes(i.effectType)).map(incense => {
-                  const qty = inventory[incense.id] ?? 0
-                  const used = usedCount(incense.id)
-                  const canDrag = qty > 0 && used < qty
-                  return (
-                    <InventoryRow
-                      key={incense.id}
-                      incense={incense}
-                      qty={qty}
-                      used={used}
-                      canDrag={canDrag}
-                      isDragging={dragId === incense.id}
-                      isTapSelected={tapSelectedId === incense.id}
-                      isEditing={editingInventory[incense.id] ?? false}
-                      onEditToggle={() => setEditingInventory(prev => ({ ...prev, [incense.id]: !prev[incense.id] }))}
-                      onDragStart={(e) => {
-                        setDragId(incense.id)
-                        const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
-                        if (imgEl) e.dataTransfer.setDragImage(imgEl, 16, 16)
-                      }}
-                      onDragEnd={() => { setDragId(null); setDragSource(null) }}
-                      onTap={() => { if (canDrag) setTapSelectedId(prev => prev === incense.id ? null : incense.id) }}
-                      onQtyChange={(v) => { setInventory(prev => ({ ...prev, [incense.id]: v })); setEditingInventory(prev => ({ ...prev, [incense.id]: false })) }}
-                    />
-                  )
-                })}
-              </div>
+            <p className="text-[9px] font-medium text-gray-500 mb-1.5">在庫 <span className="text-gray-400">— タップ or ドラッグで配置</span></p>
+            <div className="flex flex-wrap gap-1.5">
+              {eventItems.map(incense => {
+                const qty = inventory[incense.id] ?? 0
+                const used = usedCount(incense.id)
+                const remaining = Math.max(0, qty - used)
+                const canDrag = remaining > 0
+                const isFlashing = (flashItems[incense.id] ?? 0) > 0
+                return (
+                  <InventoryTile
+                    key={incense.id}
+                    incense={incense}
+                    remaining={remaining}
+                    used={used}
+                    canDrag={canDrag}
+                    isDragging={dragId === incense.id}
+                    isTapSelected={tapSelectedId === incense.id}
+                    isFlashing={isFlashing}
+                    onFlashEnd={() => setFlashItems(prev => ({ ...prev, [incense.id]: Math.max(0, (prev[incense.id] ?? 1) - 1) }))}
+                    onDragStart={(e) => {
+                      setDragId(incense.id)
+                      const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
+                      if (imgEl) e.dataTransfer.setDragImage(imgEl, 16, 16)
+                    }}
+                    onDragEnd={() => { setDragId(null); setDragSource(null) }}
+                    onTap={() => { if (canDrag) setTapSelectedId(prev => prev === incense.id ? null : incense.id) }}
+                  />
+                )
+              })}
             </div>
           </div>
         </div>
@@ -1056,82 +1053,86 @@ export function EventCalendar() {
 
 // ─── InventoryRow（在庫エリア用コンパクト行） ────────────────
 
-function InventoryRow({
-  incense, qty, used, canDrag, isDragging, isTapSelected,
-  isEditing, onEditToggle,
-  onDragStart, onDragEnd, onTap, onQtyChange,
+// ─── InventoryTile（在庫D&Dパレット用アイコンタイル） ────────────
+
+function InventoryTile({
+  incense, remaining, used, canDrag, isDragging, isTapSelected,
+  isFlashing, onFlashEnd,
+  onDragStart, onDragEnd, onTap,
 }: {
   incense: IncenseMaster
-  qty: number
+  remaining: number
   used: number
   canDrag: boolean
   isDragging: boolean
   isTapSelected: boolean
-  isEditing: boolean
-  onEditToggle: () => void
+  isFlashing: boolean
+  onFlashEnd: () => void
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
   onTap: () => void
-  onQtyChange: (v: number) => void
 }) {
-  const max = incense.maxStock ?? (incense.id === "good-camp" ? 2 : 99)
+  // +1 バッジアニメーション
+  const [showPlus, setShowPlus] = useState(false)
+  const prevFlash = useRef(false)
+  useEffect(() => {
+    if (isFlashing && !prevFlash.current) {
+      setShowPlus(true)
+      const t = setTimeout(() => { setShowPlus(false); onFlashEnd() }, 700)
+      return () => clearTimeout(t)
+    }
+    prevFlash.current = isFlashing
+  }, [isFlashing, onFlashEnd])
+
   return (
-    <div
-      draggable={canDrag}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      data-tap-item
-      onClick={onTap}
-      className={cn(
-        "flex items-center gap-1.5 px-2 py-1 rounded-lg border select-none transition-all",
-        canDrag
-          ? "bg-white border-gray-200 cursor-grab active:cursor-grabbing hover:border-blue-300 shadow-sm"
-          : "bg-gray-50 border-gray-100 opacity-50 cursor-default",
-        isDragging && "border-blue-400 scale-95 opacity-80",
-        isTapSelected && "border-blue-500 ring-2 ring-blue-300 scale-95",
-      )}
-    >
-      <img
-        src={incense.imageUrl}
-        alt={incense.name}
-        width={28}
-        height={28}
-        className="w-7 h-7 object-contain shrink-0"
-        draggable={false}
-      />
-      <span className="text-[9px] text-gray-600 leading-tight flex-1 min-w-0 line-clamp-2">
-        {incense.name}
-      </span>
-      <div className="flex flex-col items-end gap-0.5 shrink-0">
-        {isEditing ? (
-          <input
-            type="number"
-            min={0}
-            max={max}
-            defaultValue={qty}
-            autoFocus
-            onClick={(e) => e.stopPropagation()}
-            onBlur={(e) => { onQtyChange(Math.min(max, Math.max(0, Number(e.target.value)))) }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur()
-              if (e.key === "Escape") onEditToggle()
-            }}
-            className="w-10 text-xs font-bold text-center text-gray-800 bg-white border border-blue-400 rounded py-0 focus:outline-none"
-          />
-        ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); onEditToggle() }}
-            className="flex items-center gap-0.5 px-1 py-0 rounded hover:bg-gray-100 transition-colors group"
-            title="個数を編集"
-          >
-            <span className="text-xs font-bold text-gray-800">{qty}</span>
-            <span className="text-[8px] text-gray-300 group-hover:text-gray-500">✏️</span>
-          </button>
+    <div className="relative">
+      <div
+        draggable={canDrag}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        data-tap-item
+        onClick={onTap}
+        title={`${incense.name}（残${remaining}）`}
+        className={cn(
+          "relative w-12 h-12 flex items-center justify-center rounded-xl border-2 select-none transition-all",
+          canDrag
+            ? "bg-white border-gray-200 cursor-grab active:cursor-grabbing hover:border-blue-300 shadow-sm hover:shadow-md"
+            : "bg-gray-50 border-gray-100 opacity-40 cursor-default",
+          isDragging && "border-blue-400 scale-90 opacity-70",
+          isTapSelected && "border-blue-500 ring-2 ring-blue-300 scale-95 shadow-md",
+          showPlus && "border-green-400",
         )}
-        <span className={cn("text-[8px] text-blue-500", used === 0 && "invisible")}>
-          配置:{used}
+      >
+        <img
+          src={incense.imageUrl}
+          alt={incense.name}
+          width={36}
+          height={36}
+          className="w-9 h-9 object-contain"
+          draggable={false}
+        />
+        {/* 残数バッジ */}
+        <span className={cn(
+          "absolute -bottom-1 -right-1 min-w-4 h-4 px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center border",
+          remaining > 0
+            ? "bg-blue-500 text-white border-white"
+            : "bg-gray-300 text-gray-500 border-white",
+        )}>
+          {remaining}
         </span>
+        {/* 配置済みバッジ */}
+        {used > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-0.5 rounded-full text-[8px] font-bold flex items-center justify-center bg-orange-400 text-white border border-white">
+            {used}
+          </span>
+        )}
       </div>
+      {/* +1 フロートアニメーション */}
+      {showPlus && (
+        <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[11px] font-bold text-green-500 pointer-events-none animate-bounce">
+          +1
+        </span>
+      )}
     </div>
   )
 }
