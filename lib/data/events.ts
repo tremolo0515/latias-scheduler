@@ -92,6 +92,8 @@ export interface PokeSleepEvent {
   itemIds: string[]
   /** このイベントのメインおこうID（配置優先度最上位） */
   mainIncenseId: string
+  /** サブレスロットを出現させるおこうID一覧（mainIncenseId以外に追加がある場合） */
+  sableIncenseIds?: string[]
   /** うもう交換所定義（省略時は非表示） */
   umouShop?: UmouExchangeShop
 }
@@ -310,6 +312,7 @@ export const EVENTS: PokeSleepEvent[] = [
       "latios", "latias", "good-camp", "help-whistle", "master-sable", "latios-sable",
     ],
     mainIncenseId: "latios",
+    sableIncenseIds: ["latias"],  // ラティアスのおこうを置いた日もサブレスロット出現
     umouShop: {
       weeks: [
         {

@@ -202,6 +202,8 @@ export function EventCalendar() {
   const [eventIndex, setEventIndex] = useState(EVENTS.length - 1)
   const currentEvent: PokeSleepEvent = EVENTS[eventIndex]
   const eventDays: DayInfo[] = buildEventDays(currentEvent)
+  // サブレスロットを出現させるおこうIDセット（mainIncenseId + sableIncenseIds）
+  const sableIncenseSet = new Set([currentEvent.mainIncenseId, ...(currentEvent.sableIncenseIds ?? [])])
   const eventItems = INCENSE_MASTERS.filter(i => currentEvent.itemIds.includes(i.id))
 
   // ── 在庫数（incense id → 個数）──
@@ -389,7 +391,7 @@ export function EventCalendar() {
       if (!isIncenseItem(dragId)) return
       const other = slot === "slot1" ? slots.slot2 : slots.slot1
       if (other === dragId) return
-      const POKEMON_LATIAS = new Set(["pokemon", "latias"])
+      const POKEMON_LATIAS = new Set(["pokemon", ...sableIncenseSet])
       if (POKEMON_LATIAS.has(dragId) && other && POKEMON_LATIAS.has(other)) return
     }
     if (slot === "slot3" || slot === "slot4") {
@@ -397,7 +399,7 @@ export function EventCalendar() {
       if (!slots.splitSleep) return
       const other = slot === "slot3" ? slots.slot4 : slots.slot3
       if (other === dragId) return
-      const POKEMON_LATIAS = new Set(["pokemon", "latias"])
+      const POKEMON_LATIAS = new Set(["pokemon", ...sableIncenseSet])
       if (POKEMON_LATIAS.has(dragId) && other && POKEMON_LATIAS.has(other)) return
     }
     const curMainId = currentEvent.mainIncenseId
@@ -415,13 +417,13 @@ export function EventCalendar() {
 
     setDaySlots(prev => {
       let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: dragId } }
-      // latias が全スロットから消えた場合、sableSlot を強制クリア
+      // サブレおこうが全スロットから消えた場合、sableSlot を強制クリア
       if (slot === "slot1" || slot === "slot2" || slot === "slot3" || slot === "slot4") {
         const day = next[dayIndex]
-        if (day.slot1 !== "latias" && day.slot2 !== "latias" && day.sableSlot) {
+        if (!sableIncenseSet.has(day.slot1!) && !sableIncenseSet.has(day.slot2!) && day.sableSlot) {
           next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot: null, sableCount: 1 } }
         }
-        if (day.slot3 !== "latias" && day.slot4 !== "latias" && day.sableSlot2) {
+        if (!sableIncenseSet.has(day.slot3!) && !sableIncenseSet.has(day.slot4!) && day.sableSlot2) {
           next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot2: null, sableCount2: 1 } }
         }
       }
@@ -431,10 +433,10 @@ export function EventCalendar() {
         let srcUpdate: Partial<DaySlots> = { [dragSource.slot]: null }
         if (dragSource.slot === "slot1" || dragSource.slot === "slot2" || dragSource.slot === "slot3" || dragSource.slot === "slot4") {
           const afterSrc = { ...srcDay, [dragSource.slot]: null }
-          if (afterSrc.slot1 !== "latias" && afterSrc.slot2 !== "latias" && srcDay.sableSlot) {
+          if (!sableIncenseSet.has(afterSrc.slot1!) && !sableIncenseSet.has(afterSrc.slot2!) && srcDay.sableSlot) {
             srcUpdate = { ...srcUpdate, sableSlot: null, sableCount: 1 }
           }
-          if (afterSrc.slot3 !== "latias" && afterSrc.slot4 !== "latias" && srcDay.sableSlot2) {
+          if (!sableIncenseSet.has(afterSrc.slot3!) && !sableIncenseSet.has(afterSrc.slot4!) && srcDay.sableSlot2) {
             srcUpdate = { ...srcUpdate, sableSlot2: null, sableCount2: 1 }
           }
         }
@@ -462,7 +464,7 @@ export function EventCalendar() {
 
     // ターゲットスロットにアイテムがある場合はスワップ（移動元がある場合のみ）
     if (targetItem && tapSource) {
-      const POKEMON_LATIAS = new Set(["pokemon", "latias"])
+      const POKEMON_LATIAS = new Set(["pokemon", ...sableIncenseSet])
       // ターゲット日の制約チェック（idを置いた後のもう一方のスロット）
       if (slot === "slot1" || slot === "slot2") {
         const otherOnTarget = slot === "slot1" ? slots.slot2 : slots.slot1
@@ -490,7 +492,7 @@ export function EventCalendar() {
       if (!isIncenseItem(id)) return
       const other = slot === "slot1" ? slots.slot2 : slots.slot1
       if (other === id) return
-      const POKEMON_LATIAS = new Set(["pokemon", "latias"])
+      const POKEMON_LATIAS = new Set(["pokemon", ...sableIncenseSet])
       if (POKEMON_LATIAS.has(id) && other && POKEMON_LATIAS.has(other)) return
     }
     if (slot === "slot3" || slot === "slot4") {
@@ -498,7 +500,7 @@ export function EventCalendar() {
       if (!slots.splitSleep) return
       const other = slot === "slot3" ? slots.slot4 : slots.slot3
       if (other === id) return
-      const POKEMON_LATIAS = new Set(["pokemon", "latias"])
+      const POKEMON_LATIAS = new Set(["pokemon", ...sableIncenseSet])
       if (POKEMON_LATIAS.has(id) && other && POKEMON_LATIAS.has(other)) return
     }
     const curMainId = currentEvent.mainIncenseId
@@ -517,10 +519,10 @@ export function EventCalendar() {
       let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: id } }
       if (slot === "slot1" || slot === "slot2" || slot === "slot3" || slot === "slot4") {
         const day = next[dayIndex]
-        if (day.slot1 !== "latias" && day.slot2 !== "latias" && day.sableSlot) {
+        if (!sableIncenseSet.has(day.slot1!) && !sableIncenseSet.has(day.slot2!) && day.sableSlot) {
           next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot: null, sableCount: 1 } }
         }
-        if (day.slot3 !== "latias" && day.slot4 !== "latias" && day.sableSlot2) {
+        if (!sableIncenseSet.has(day.slot3!) && !sableIncenseSet.has(day.slot4!) && day.sableSlot2) {
           next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot2: null, sableCount2: 1 } }
         }
       }
@@ -529,10 +531,10 @@ export function EventCalendar() {
         let srcUpdate: Partial<DaySlots> = { [tapSource.slot]: null }
         if (tapSource.slot === "slot1" || tapSource.slot === "slot2" || tapSource.slot === "slot3" || tapSource.slot === "slot4") {
           const afterSrc = { ...srcDay, [tapSource.slot]: null }
-          if (afterSrc.slot1 !== "latias" && afterSrc.slot2 !== "latias" && srcDay.sableSlot) {
+          if (!sableIncenseSet.has(afterSrc.slot1!) && !sableIncenseSet.has(afterSrc.slot2!) && srcDay.sableSlot) {
             srcUpdate = { ...srcUpdate, sableSlot: null, sableCount: 1 }
           }
-          if (afterSrc.slot3 !== "latias" && afterSrc.slot4 !== "latias" && srcDay.sableSlot2) {
+          if (!sableIncenseSet.has(afterSrc.slot3!) && !sableIncenseSet.has(afterSrc.slot4!) && srcDay.sableSlot2) {
             srcUpdate = { ...srcUpdate, sableSlot2: null, sableCount2: 1 }
           }
         }
@@ -552,13 +554,13 @@ export function EventCalendar() {
   function clearSlot(dayIndex: number, slot: keyof DaySlots) {
     setDaySlots(prev => {
       const day = prev[dayIndex]
-      // slot1/slot2 から latias を外してもう一方にもなければ sableSlot をクリア
-      const clearing1 = (slot === "slot1" && day.slot1 === "latias") || (slot === "slot2" && day.slot2 === "latias")
-      const remaining1 = (slot !== "slot1" && day.slot1 === "latias") || (slot !== "slot2" && day.slot2 === "latias")
+      // slot1/slot2 からサブレおこうを外してもう一方にもなければ sableSlot をクリア
+      const clearing1 = (slot === "slot1" && sableIncenseSet.has(day.slot1!)) || (slot === "slot2" && sableIncenseSet.has(day.slot2!))
+      const remaining1 = (slot !== "slot1" && sableIncenseSet.has(day.slot1!)) || (slot !== "slot2" && sableIncenseSet.has(day.slot2!))
       const shouldClearSable1 = clearing1 && !remaining1
-      // slot3/slot4 から latias を外してもう一方にもなければ sableSlot2 をクリア
-      const clearing2 = (slot === "slot3" && day.slot3 === "latias") || (slot === "slot4" && day.slot4 === "latias")
-      const remaining2 = (slot !== "slot3" && day.slot3 === "latias") || (slot !== "slot4" && day.slot4 === "latias")
+      // slot3/slot4 からサブレおこうを外してもう一方にもなければ sableSlot2 をクリア
+      const clearing2 = (slot === "slot3" && sableIncenseSet.has(day.slot3!)) || (slot === "slot4" && sableIncenseSet.has(day.slot4!))
+      const remaining2 = (slot !== "slot3" && sableIncenseSet.has(day.slot3!)) || (slot !== "slot4" && sableIncenseSet.has(day.slot4!))
       const shouldClearSable2 = clearing2 && !remaining2
       return {
         ...prev,
@@ -876,6 +878,7 @@ export function EventCalendar() {
                 }))}
                 mainIncenseId={currentEvent.mainIncenseId}
                 mainSableId={currentEvent.umouPrices.mainSableId}
+                sableIncenseSet={sableIncenseSet}
               />
             ))}
           </div>
@@ -930,6 +933,7 @@ export function EventCalendar() {
               }))}
               mainIncenseId={currentEvent.mainIncenseId}
               mainSableId={currentEvent.umouPrices.mainSableId}
+              sableIncenseSet={sableIncenseSet}
             />
           ))}
         </div>
@@ -1073,6 +1077,7 @@ interface DayCellProps {
   onToggleSplitSleep: () => void
   mainIncenseId: string
   mainSableId: string
+  sableIncenseSet: Set<string>
 }
 
 /** 汎用アイテムスロット */
@@ -1182,7 +1187,7 @@ function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
   onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax, onSableCountChange2, sableMax2, todayDayIndex, onToggleSplitSleep,
-  mainIncenseId, mainSableId,
+  mainIncenseId, mainSableId, sableIncenseSet,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -1255,8 +1260,8 @@ function DayCell({
               onDrop={() => onDropSlot("slot2")} onTap={() => onTapSlot("slot2")} onTapItem={slots.slot2 ? () => onTapFromSlot("slot2", slots.slot2!) : undefined} onClear={() => onClearSlot("slot2")}
               onDragFromSlot={slots.slot2 ? (e) => onDragFromSlot("slot2", slots.slot2!, e) : undefined}
             />
-            {/* サブレスロット（メインおこう配置時のみ・マスターサブレorサブレ排他） */}
-            {(slots.slot1 === mainIncenseId || slots.slot2 === mainIncenseId) && (
+            {/* サブレスロット（sableIncenseSet のおこう配置時のみ・マスターサブレorサブレ排他） */}
+            {(sableIncenseSet.has(slots.slot1!) || sableIncenseSet.has(slots.slot2!)) && (
               <ItemSlot
                 itemId={slots.sableSlot}
                 isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot}
@@ -1294,8 +1299,8 @@ function DayCell({
                 onDrop={() => onDropSlot("slot4")} onTap={() => onTapSlot("slot4")} onTapItem={slots.slot4 ? () => onTapFromSlot("slot4", slots.slot4!) : undefined} onClear={() => onClearSlot("slot4")}
                 onDragFromSlot={slots.slot4 ? (e) => onDragFromSlot("slot4", slots.slot4!, e) : undefined}
               />
-              {/* 2回目睡眠用サブレスロット（slot3/slot4 にメインおこうがある場合） */}
-              {(slots.slot3 === mainIncenseId || slots.slot4 === mainIncenseId) && (
+              {/* 2回目睡眠用サブレスロット（slot3/slot4 にsableIncenseSetのおこうがある場合） */}
+              {(sableIncenseSet.has(slots.slot3!) || sableIncenseSet.has(slots.slot4!)) && (
                 <ItemSlot
                   itemId={slots.sableSlot2}
                   isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot2}
