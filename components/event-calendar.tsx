@@ -37,9 +37,10 @@ interface DaySlots {
   sableSlot2: string | null      // 2回目睡眠: マスターサブレ or サブレ（排他）
   sableCount2: number            // 2回目睡眠: サブレの使用個数
   carryoverSlot: string | null   // 最終日のみ / メインおこう持ち越し専用
+  carryoverSlot2: string | null  // 最終日のみ / sableIncenseIds のおこう持ち越し専用
 }
 
-const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, slot3: null, slot4: null, splitSleep: false, sableSlot: null, sableCount: 1, sableSlot2: null, sableCount2: 1, carryoverSlot: null })
+const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, slot3: null, slot4: null, splitSleep: false, sableSlot: null, sableCount: 1, sableSlot2: null, sableCount2: 1, carryoverSlot: null, carryoverSlot2: null })
 
 // ─── うもう必要数計算（提案ロジック復活時に使用 — 現在は無効化）─────────────────
 /*
@@ -357,6 +358,7 @@ export function EventCalendar() {
         + (s.sableSlot === id ? (id === mainSableId ? s.sableCount : 1) : 0)
         + (s.sableSlot2 === id ? (id === mainSableId ? s.sableCount2 : 1) : 0)
         + (s.carryoverSlot === id ? 1 : 0)
+        + (s.carryoverSlot2 === id ? 1 : 0)
     }, 0)
   }
 
@@ -398,10 +400,13 @@ export function EventCalendar() {
     }
     const curMainId = currentEvent.mainIncenseId
     const curSableId = currentEvent.umouPrices.mainSableId
-    if (slot === "sableSlot"     && dragId !== "master-sable" && dragId !== curSableId) return
-    if (slot === "sableSlot2"    && dragId !== "master-sable" && dragId !== curSableId) return
-    if (slot === "carryoverSlot" && dragId !== curMainId) return
-    if (slot === "carryoverSlot" && dayIndex !== 13) return
+    if (slot === "sableSlot"      && dragId !== "master-sable" && dragId !== curSableId) return
+    if (slot === "sableSlot2"     && dragId !== "master-sable" && dragId !== curSableId) return
+    if (slot === "carryoverSlot"  && dragId !== curMainId) return
+    if (slot === "carryoverSlot"  && dayIndex !== 13) return
+    if (slot === "carryoverSlot2" && !sableIncenseSet.has(dragId)) return
+    if (slot === "carryoverSlot2" && dragId === curMainId) return  // mainは carryoverSlot へ
+    if (slot === "carryoverSlot2" && dayIndex !== 13) return
 
     // 在庫チェック（スロットからの移動は使用数-1で判定）
     const effectiveUsed = dragSource ? usedCount(dragId) - 1 : usedCount(dragId)
@@ -497,10 +502,13 @@ export function EventCalendar() {
     }
     const curMainId = currentEvent.mainIncenseId
     const curSableId = currentEvent.umouPrices.mainSableId
-    if (slot === "sableSlot"     && id !== "master-sable" && id !== curSableId) return
-    if (slot === "sableSlot2"    && id !== "master-sable" && id !== curSableId) return
-    if (slot === "carryoverSlot" && id !== curMainId) return
-    if (slot === "carryoverSlot" && dayIndex !== 13) return
+    if (slot === "sableSlot"      && id !== "master-sable" && id !== curSableId) return
+    if (slot === "sableSlot2"     && id !== "master-sable" && id !== curSableId) return
+    if (slot === "carryoverSlot"  && id !== curMainId) return
+    if (slot === "carryoverSlot"  && dayIndex !== 13) return
+    if (slot === "carryoverSlot2" && !sableIncenseSet.has(id)) return
+    if (slot === "carryoverSlot2" && id === curMainId) return  // mainは carryoverSlot へ
+    if (slot === "carryoverSlot2" && dayIndex !== 13) return
 
     const effectiveUsed = tapSource ? usedCount(id) - 1 : usedCount(id)
     if (effectiveUsed >= (inventory[id] ?? 0)) return
@@ -719,7 +727,7 @@ export function EventCalendar() {
                 max: ci.max,
               })).filter(ci => ci.item)
               return (<>
-                <p className="text-xs font-semibold text-gray-600 mb-1">その他</p>
+                <p className="text-xs font-semibold text-gray-600 mb-1">その他どうぐ</p>
                 {/* 持込アイテム（うもう合計に影響しない） */}
                 {carryInItems.map(({ item, max }) => {
                   const qty = inventory[item.id] ?? 0
@@ -871,6 +879,7 @@ export function EventCalendar() {
                 mainIncenseId={currentEvent.mainIncenseId}
                 mainSableId={currentEvent.umouPrices.mainSableId}
                 sableIncenseSet={sableIncenseSet}
+                sableIncenseIds={currentEvent.sableIncenseIds ?? []}
               />
             ))}
           </div>
@@ -921,6 +930,7 @@ export function EventCalendar() {
               mainIncenseId={currentEvent.mainIncenseId}
               mainSableId={currentEvent.umouPrices.mainSableId}
               sableIncenseSet={sableIncenseSet}
+              sableIncenseIds={currentEvent.sableIncenseIds ?? []}
             />
           ))}
         </div>
@@ -1063,6 +1073,7 @@ interface DayCellProps {
   mainIncenseId: string
   mainSableId: string
   sableIncenseSet: Set<string>
+  sableIncenseIds: string[]
 }
 
 /** 汎用アイテムスロット */
@@ -1172,7 +1183,7 @@ function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
   onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onSableCountChange, sableMax, onSableCountChange2, sableMax2, todayDayIndex, onToggleSplitSleep,
-  mainIncenseId, mainSableId, sableIncenseSet,
+  mainIncenseId, mainSableId, sableIncenseSet, sableIncenseIds,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -1302,25 +1313,40 @@ function DayCell({
             </div>
           )}
 
-          {/* 持ち越しスロット（最終日 4/19 のみ） */}
+          {/* 持ち越しスロット（最終日のみ） */}
           {day.dayIndex === 13 && (
-            <div className="flex">
-              <div className="ml-auto">
+            <div className="flex gap-0.5 justify-end">
+              {/* sableIncenseSet のおこうがある場合のみ2つ目の持ち越しスロットを表示 */}
+              {sableIncenseSet.size > 1 && (
                 <ItemSlot
-                  itemId={slots.carryoverSlot}
-                  isOver={isDragOver && dragId === mainIncenseId && !slots.carryoverSlot}
-                  isTapTarget={tapSelectedId === mainIncenseId && !slots.carryoverSlot}
-                  isTapSelected={tapSelectedId === slots.carryoverSlot && !!slots.carryoverSlot}
+                  itemId={slots.carryoverSlot2}
+                  isOver={isDragOver && sableIncenseSet.has(dragId!) && dragId !== mainIncenseId && !slots.carryoverSlot2}
+                  isTapTarget={!!tapSelectedId && sableIncenseSet.has(tapSelectedId) && tapSelectedId !== mainIncenseId && !slots.carryoverSlot2}
+                  isTapSelected={tapSelectedId === slots.carryoverSlot2 && !!slots.carryoverSlot2}
                   hasTapSelected={!!tapSelectedId}
                   label={"持越し"}
-                  bgImageUrls={[getIncenseById(mainIncenseId)?.imageUrl ?? ""]}
-                  onDrop={() => onDropSlot("carryoverSlot")}
-                  onTap={() => onTapSlot("carryoverSlot")}
-                  onTapItem={slots.carryoverSlot ? () => onTapFromSlot("carryoverSlot", slots.carryoverSlot!) : undefined}
-                  onClear={() => onClearSlot("carryoverSlot")}
-                  onDragFromSlot={slots.carryoverSlot ? (e) => onDragFromSlot("carryoverSlot", slots.carryoverSlot!, e) : undefined}
+                  bgImageUrls={sableIncenseIds.map((id: string) => getIncenseById(id)?.imageUrl ?? "").filter(Boolean)}
+                  onDrop={() => onDropSlot("carryoverSlot2")}
+                  onTap={() => onTapSlot("carryoverSlot2")}
+                  onTapItem={slots.carryoverSlot2 ? () => onTapFromSlot("carryoverSlot2", slots.carryoverSlot2!) : undefined}
+                  onClear={() => onClearSlot("carryoverSlot2")}
+                  onDragFromSlot={slots.carryoverSlot2 ? (e) => onDragFromSlot("carryoverSlot2", slots.carryoverSlot2!, e) : undefined}
                 />
-              </div>
+              )}
+              <ItemSlot
+                itemId={slots.carryoverSlot}
+                isOver={isDragOver && dragId === mainIncenseId && !slots.carryoverSlot}
+                isTapTarget={tapSelectedId === mainIncenseId && !slots.carryoverSlot}
+                isTapSelected={tapSelectedId === slots.carryoverSlot && !!slots.carryoverSlot}
+                hasTapSelected={!!tapSelectedId}
+                label={"持越し"}
+                bgImageUrls={[getIncenseById(mainIncenseId)?.imageUrl ?? ""]}
+                onDrop={() => onDropSlot("carryoverSlot")}
+                onTap={() => onTapSlot("carryoverSlot")}
+                onTapItem={slots.carryoverSlot ? () => onTapFromSlot("carryoverSlot", slots.carryoverSlot!) : undefined}
+                onClear={() => onClearSlot("carryoverSlot")}
+                onDragFromSlot={slots.carryoverSlot ? (e) => onDragFromSlot("carryoverSlot", slots.carryoverSlot!, e) : undefined}
+              />
             </div>
           )}
       </div>
