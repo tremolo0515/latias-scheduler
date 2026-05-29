@@ -1175,7 +1175,7 @@ function ItemSlot({
         item
           ? isTapSelected
             ? "bg-blue-100 border-blue-400 ring-2 ring-blue-300"
-            : (item?.effectType === "pokemon" || item?.effectType === "treat")
+            : (item?.id !== "pokemon" && (item?.effectType === "pokemon" || item?.effectType === "treat"))
               ? "bg-purple-50 border-purple-300 shadow-[0_0_6px_1px_rgba(168,85,247,0.25)]"
               : "bg-gray-100 border-gray-300"
           : localOver || isTapTarget
