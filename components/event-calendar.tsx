@@ -738,7 +738,7 @@ export function EventCalendar() {
                 {/* 通常のその他アイテム */}
                 {otherItems.map(item => {
                   const qty = inventory[item.id] ?? 0
-                  const max = item.maxStock ?? 99
+                  const max = item.maxStock ?? 14
                   return (
                     <div key={item.id} className="flex items-center gap-1 py-0.5">
                       <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain shrink-0" />
