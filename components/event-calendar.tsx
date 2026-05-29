@@ -850,7 +850,7 @@ export function EventCalendar() {
               if (remaining <= 0 && !isOverflow) return null
               return (
                 <InventoryTile
-                  key={`${incense.id}-${wiggleKeys[incense.id] ?? 0}`}
+                  key={`${incense.id}-${wiggleKeys[incense.id] ?? 0}-${isOverflow ? "ov" : ""}`}
                   incense={incense}
                   remaining={Math.max(0, remaining)}
                   canDrag={canDrag}
