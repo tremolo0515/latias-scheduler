@@ -843,17 +843,19 @@ export function EventCalendar() {
             {eventItems.map(incense => {
               const qty = inventory[incense.id] ?? 0
               const used = usedCount(incense.id)
-              const remaining = Math.max(0, qty - used)
+              const remaining = qty - used  // 負値 = オーバーフロー
+              const isOverflow = remaining < 0
               const canDrag = remaining > 0
-              if (remaining === 0) return null
+              if (remaining === 0 && !isOverflow) return null
               return (
                 <InventoryTile
                   key={`${incense.id}-${wiggleKeys[incense.id] ?? 0}`}
                   incense={incense}
-                  remaining={remaining}
+                  remaining={Math.max(0, remaining)}
                   canDrag={canDrag}
                   isDragging={dragId === incense.id}
                   isTapSelected={tapSelectedId === incense.id}
+                  isOverflow={isOverflow}
                   onDragStart={(e) => {
                     setDragId(incense.id)
                     const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
@@ -1061,7 +1063,7 @@ export function EventCalendar() {
 // - 在庫追加時に wiggle アニメーション
 
 function InventoryTile({
-  incense, remaining, canDrag, isDragging, isTapSelected,
+  incense, remaining, canDrag, isDragging, isTapSelected, isOverflow,
   onDragStart, onDragEnd, onTap,
 }: {
   incense: IncenseMaster
@@ -1069,6 +1071,7 @@ function InventoryTile({
   canDrag: boolean
   isDragging: boolean
   isTapSelected: boolean
+  isOverflow: boolean
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
   onTap: () => void
@@ -1108,6 +1111,10 @@ function InventoryTile({
         <span className="absolute bottom-0 right-0 text-xs font-black text-gray-900 leading-none" style={{ filter: "drop-shadow(0 0 2px white) drop-shadow(0 0 2px white) drop-shadow(0 0 2px white)" }}>
           ×{remaining}
         </span>
+      )}
+      {/* 在庫オーバー警告バッジ */}
+      {isOverflow && (
+        <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-black leading-none shadow">!</span>
       )}
     </div>
   )
