@@ -846,6 +846,7 @@ export function EventCalendar() {
               const remaining = qty - used  // 負値 = オーバーフロー
               const isOverflow = used > qty
               const canDrag = remaining > 0
+              if (process.env.NODE_ENV === "development") console.log(incense.id, { qty, used, remaining, isOverflow })
               // 通常: remaining === 0 は非表示。オーバーフロー時は表示してバッジ
               if (remaining <= 0 && !isOverflow) return null
               return (
@@ -870,6 +871,10 @@ export function EventCalendar() {
             {eventItems.every(i => Math.max(0, (inventory[i.id] ?? 0) - usedCount(i.id)) === 0) && (
               <p className="text-[9px] text-blue-300 italic">在庫を追加すると、ここにアイテムが並びます</p>
             )}
+            {/* デバッグ表示（確認後削除） */}
+            <div className="w-full text-[8px] text-gray-400 mt-1">
+              {eventItems.map(i => { const qty=inventory[i.id]??0; const used=usedCount(i.id); return qty>0||used>0 ? <span key={i.id} className="mr-2">{i.id}:qty={qty},used={used}</span> : null })}
+            </div>
           </div>
         </div>
       </section>
