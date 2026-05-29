@@ -1273,49 +1273,47 @@ function DayCell({
             )}
           </div>
 
-          {/* 分割睡眠 2回目スロット */}
-          {slots.splitSleep && (
-            <div className="flex gap-0.5">
+          {/* 分割睡眠 2回目スロット（常にレンダリング・OFF時は非表示で高さ確保） */}
+          <div className="flex gap-0.5" style={slots.splitSleep ? undefined : { visibility: "hidden", pointerEvents: "none" }}>
+            <ItemSlot
+              itemId={slots.slot3} isOver={isDragOver && dragIsIncense && !slots.slot3}
+              isTapTarget={!!tapSelectedId && !slots.slot3}
+              isTapSelected={tapSelectedId === slots.slot3 && !!slots.slot3}
+              hasTapSelected={!!tapSelectedId}
+              bgImageUrls={["/img/okou_normal.png"]}
+              onDrop={() => onDropSlot("slot3")} onTap={() => onTapSlot("slot3")} onTapItem={slots.slot3 ? () => onTapFromSlot("slot3", slots.slot3!) : undefined} onClear={() => onClearSlot("slot3")}
+              onDragFromSlot={slots.slot3 ? (e) => onDragFromSlot("slot3", slots.slot3!, e) : undefined}
+            />
+            <ItemSlot
+              itemId={slots.slot4} isOver={isDragOver && dragIsIncense && !!slots.slot3 && !slots.slot4}
+              isTapTarget={!!tapSelectedId && !!slots.slot3 && !slots.slot4}
+              isTapSelected={tapSelectedId === slots.slot4 && !!slots.slot4}
+              hasTapSelected={!!tapSelectedId}
+              bgImageUrls={["/img/okou_normal.png"]}
+              onDrop={() => onDropSlot("slot4")} onTap={() => onTapSlot("slot4")} onTapItem={slots.slot4 ? () => onTapFromSlot("slot4", slots.slot4!) : undefined} onClear={() => onClearSlot("slot4")}
+              onDragFromSlot={slots.slot4 ? (e) => onDragFromSlot("slot4", slots.slot4!, e) : undefined}
+            />
+            {/* 2回目睡眠用サブレスロット（slot3/slot4 にsableIncenseSetのおこうがある場合） */}
+            {(sableIncenseSet.has(slots.slot3!) || sableIncenseSet.has(slots.slot4!)) && (
               <ItemSlot
-                itemId={slots.slot3} isOver={isDragOver && dragIsIncense && !slots.slot3}
-                isTapTarget={!!tapSelectedId && !slots.slot3}
-                isTapSelected={tapSelectedId === slots.slot3 && !!slots.slot3}
+                itemId={slots.sableSlot2}
+                isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot2}
+                isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot2}
+                isTapSelected={tapSelectedId === slots.sableSlot2 && !!slots.sableSlot2}
                 hasTapSelected={!!tapSelectedId}
-                bgImageUrls={["/img/okou_normal.png"]}
-                onDrop={() => onDropSlot("slot3")} onTap={() => onTapSlot("slot3")} onTapItem={slots.slot3 ? () => onTapFromSlot("slot3", slots.slot3!) : undefined} onClear={() => onClearSlot("slot3")}
-                onDragFromSlot={slots.slot3 ? (e) => onDragFromSlot("slot3", slots.slot3!, e) : undefined}
+                bgImageUrls={["/img/poke_sable.png"]}
+                count={slots.sableSlot2 === mainSableId ? slots.sableCount2 : undefined}
+                maxCount={sableMax2}
+                onCountChange={slots.sableSlot2 === mainSableId ? onSableCountChange2 : undefined}
+                onDrop={() => onDropSlot("sableSlot2")} onTap={() => onTapSlot("sableSlot2")} onTapItem={slots.sableSlot2 ? () => onTapFromSlot("sableSlot2", slots.sableSlot2!) : undefined} onClear={() => onClearSlot("sableSlot2")}
+                onDragFromSlot={slots.sableSlot2 ? (e) => onDragFromSlot("sableSlot2", slots.sableSlot2!, e) : undefined}
               />
-              <ItemSlot
-                itemId={slots.slot4} isOver={isDragOver && dragIsIncense && !!slots.slot3 && !slots.slot4}
-                isTapTarget={!!tapSelectedId && !!slots.slot3 && !slots.slot4}
-                isTapSelected={tapSelectedId === slots.slot4 && !!slots.slot4}
-                hasTapSelected={!!tapSelectedId}
-                bgImageUrls={["/img/okou_normal.png"]}
-                onDrop={() => onDropSlot("slot4")} onTap={() => onTapSlot("slot4")} onTapItem={slots.slot4 ? () => onTapFromSlot("slot4", slots.slot4!) : undefined} onClear={() => onClearSlot("slot4")}
-                onDragFromSlot={slots.slot4 ? (e) => onDragFromSlot("slot4", slots.slot4!, e) : undefined}
-              />
-              {/* 2回目睡眠用サブレスロット（slot3/slot4 にsableIncenseSetのおこうがある場合） */}
-              {(sableIncenseSet.has(slots.slot3!) || sableIncenseSet.has(slots.slot4!)) && (
-                <ItemSlot
-                  itemId={slots.sableSlot2}
-                  isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot2}
-                  isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot2}
-                  isTapSelected={tapSelectedId === slots.sableSlot2 && !!slots.sableSlot2}
-                  hasTapSelected={!!tapSelectedId}
-                  bgImageUrls={["/img/poke_sable.png"]}
-                  count={slots.sableSlot2 === mainSableId ? slots.sableCount2 : undefined}
-                  maxCount={sableMax2}
-                  onCountChange={slots.sableSlot2 === mainSableId ? onSableCountChange2 : undefined}
-                  onDrop={() => onDropSlot("sableSlot2")} onTap={() => onTapSlot("sableSlot2")} onTapItem={slots.sableSlot2 ? () => onTapFromSlot("sableSlot2", slots.sableSlot2!) : undefined} onClear={() => onClearSlot("sableSlot2")}
-                  onDragFromSlot={slots.sableSlot2 ? (e) => onDragFromSlot("sableSlot2", slots.sableSlot2!, e) : undefined}
-                />
-              )}
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* 持ち越しスロット（最終日のみ） */}
+          {/* 持ち越しスロット（最終日のみ・右寄せ） */}
           {day.dayIndex === 13 && (
-            <div className="flex gap-0.5 justify-end">
+            <div className="flex gap-0.5 ml-auto w-fit">
               {/* sableIncenseSet のおこうがある場合のみ2つ目の持ち越しスロットを表示 */}
               {sableIncenseSet.size > 1 && (
                 <ItemSlot
