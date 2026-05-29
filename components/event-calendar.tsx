@@ -844,9 +844,10 @@ export function EventCalendar() {
               const qty = inventory[incense.id] ?? 0
               const used = usedCount(incense.id)
               const remaining = qty - used  // 負値 = オーバーフロー
-              const isOverflow = remaining < 0
+              const isOverflow = used > qty
               const canDrag = remaining > 0
-              if (remaining === 0 && !isOverflow) return null
+              // 通常: remaining === 0 は非表示。オーバーフロー時は表示してバッジ
+              if (remaining <= 0 && !isOverflow) return null
               return (
                 <InventoryTile
                   key={`${incense.id}-${wiggleKeys[incense.id] ?? 0}`}
@@ -1093,9 +1094,9 @@ function InventoryTile({
       title={`${incense.name}（残${remaining}）`}
       className={cn(
         "relative w-11 h-11 flex items-center justify-center rounded-xl select-none transition-all cursor-grab active:cursor-grabbing",
-        isDragging && "scale-90 opacity-60",
+        isOverflow ? "opacity-40 cursor-default" : isDragging ? "scale-90 opacity-60" : "",
         isTapSelected && "ring-2 ring-blue-400 scale-95",
-        wiggling && "animate-wiggle",
+        wiggling && !isOverflow && "animate-wiggle",
       )}
     >
       <img
@@ -1114,7 +1115,7 @@ function InventoryTile({
       )}
       {/* 在庫オーバー警告バッジ */}
       {isOverflow && (
-        <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-black leading-none shadow">!</span>
+        <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-black leading-none shadow-md">!</span>
       )}
     </div>
   )
