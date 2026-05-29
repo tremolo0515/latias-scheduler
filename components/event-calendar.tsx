@@ -713,11 +713,32 @@ export function EventCalendar() {
                 (currentEvent.umouShop?.weeks ?? []).flatMap(w => w.entries.map(e => e.itemId)).filter(Boolean)
               )
               const otherItems = eventItems.filter(i => !shopItemIds.has(i.id))
+              // 持込アイテム（交換所に載っているが別枠でその他に表示するもの）
+              const carryInItems = (currentEvent.carryInItems ?? []).map(ci => ({
+                item: getIncenseById(ci.itemId)!,
+                max: ci.max,
+              })).filter(ci => ci.item)
               return (<>
                 <p className="text-xs font-semibold text-gray-600 mb-1">その他</p>
+                {/* 持込アイテム（うもう合計に影響しない） */}
+                {carryInItems.map(({ item, max }) => {
+                  const qty = inventory[item.id] ?? 0
+                  return (
+                    <div key={`carryin-${item.id}`} className="flex items-center gap-1 py-0.5">
+                      <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain shrink-0" />
+                      <span className="text-[11px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}<span className="text-[9px] text-gray-400 ml-0.5">（持込）</span></span>
+                      <button onClick={() => setInventory(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
+                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none shrink-0">－</button>
+                      <span className="text-[11px] font-bold text-gray-800 w-5 text-center shrink-0">{qty}</span>
+                      <button onClick={() => { setInventory(prev => ({ ...prev, [item.id]: Math.min(max, qty + 1) })); flashItem(item.id) }}
+                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none shrink-0">＋</button>
+                    </div>
+                  )
+                })}
+                {/* 通常のその他アイテム */}
                 {otherItems.map(item => {
                   const qty = inventory[item.id] ?? 0
-                  const max = item.maxStock ?? (item.id === "good-camp" ? 2 : 99)
+                  const max = item.maxStock ?? 99
                   return (
                     <div key={item.id} className="flex items-center gap-1 py-0.5">
                       <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain shrink-0" />

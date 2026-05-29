@@ -92,6 +92,8 @@ export interface PokeSleepEvent {
   mainIncenseId: string
   /** サブレスロットを出現させるおこうID一覧（mainIncenseId以外に追加がある場合） */
   sableIncenseIds?: string[]
+  /** 持込アイテム定義（交換所とは別に「その他」欄に表示・うもう合計に影響しない） */
+  carryInItems?: { itemId: string; max: number }[]
   /** うもう交換所定義（省略時は非表示） */
   umouShop?: UmouExchangeShop
 }
@@ -314,6 +316,9 @@ export const EVENTS: PokeSleepEvent[] = [
     ],
     mainIncenseId: "latios",
     sableIncenseIds: ["latias"],  // ラティアスのおこうを置いた日もサブレスロット出現
+    carryInItems: [
+      { itemId: "latias", max: 2 },  // バッグ持込1個 + お詫び配布1個
+    ],
     umouShop: {
       weeks: [
         {
