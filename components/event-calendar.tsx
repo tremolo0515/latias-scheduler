@@ -684,6 +684,7 @@ export function EventCalendar() {
                   </div>
                   <button
                     onClick={() => {
+                      if (!window.confirm("うもう交換所をリセットしますか？\n交換済み数と在庫への加算分がすべて消えます。")) return
                       // shopCounts をリセット → 在庫から交換所加算分を差し引く
                       const shop = currentEvent.umouShop!
                       setInventory(inv => {
@@ -756,11 +757,14 @@ export function EventCalendar() {
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-xs font-semibold text-gray-600">その他どうぐ</p>
                   <button
-                    onClick={() => setInventory(prev => {
-                      const next = { ...prev }
-                      allOtherIds.forEach(id => { next[id] = 0 })
-                      return next
-                    })}
+                    onClick={() => {
+                      if (!window.confirm("その他どうぐをリセットしますか？\n全アイテムの在庫が0になります。")) return
+                      setInventory(prev => {
+                        const next = { ...prev }
+                        allOtherIds.forEach(id => { next[id] = 0 })
+                        return next
+                      })
+                    }}
                     className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
                   >リセット</button>
                 </div>
@@ -805,7 +809,7 @@ export function EventCalendar() {
           <div className="flex items-center justify-between mb-1.5">
             <p className="text-[9px] font-medium text-gray-500">バッグ <span className="text-gray-400">— タップ or ドラッグで配置</span></p>
             <button
-              onClick={clearPlan}
+              onClick={() => { if (window.confirm("全てのスロットを空にしますか？")) clearPlan() }}
               className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
             >
               全てバッグに戻す
