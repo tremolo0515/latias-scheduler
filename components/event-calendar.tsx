@@ -23,9 +23,8 @@ function isIncenseItem(id: string) {
  * - slot1/slot2:     1回目睡眠のおこう専用（2個）
  * - slot3/slot4:     2回目睡眠のおこう専用（分割睡眠ONの日のみ表示）
  * - splitSleep:      分割睡眠フラグ（日ごと）
- * - mondaySlot:      月曜日のみ / ホイッスル・キャンプチケット専用
- * - sableSlot:       ラティアスのおこう配置時のみ出現 / マスターサブレ専用
- * - carryoverSlot:   最終日（4/19）のみ / ラティアスのおこう持ち越し専用
+ * - sableSlot:       メインおこう配置時のみ出現 / マスターサブレ or サブレ専用
+ * - carryoverSlot:   最終日のみ / メインおこう持ち越し専用
  */
 interface DaySlots {
   slot1: string | null
@@ -33,17 +32,14 @@ interface DaySlots {
   slot3: string | null           // 2回目睡眠スロット（分割睡眠時）
   slot4: string | null           // 2回目睡眠スロット（分割睡眠時）
   splitSleep: boolean            // 分割睡眠フラグ
-  mondaySlot: string | null      // おてつだいホイッスル専用
-  mondayWhistleCount: number     // ホイッスルの使用個数（複数可）
-  campSlot: string | null        // いいキャンプチケット専用
-  sableSlot: string | null       // 1回目睡眠: マスターサブレ or ラティアスサブレ（排他）
-  sableCount: number             // 1回目睡眠: ラティアスサブレの使用個数
-  sableSlot2: string | null      // 2回目睡眠: マスターサブレ or ラティアスサブレ（排他）
-  sableCount2: number            // 2回目睡眠: ラティアスサブレの使用個数
-  carryoverSlot: string | null   // 最終日のみ / ラティアスのおこう持ち越し専用
+  sableSlot: string | null       // 1回目睡眠: マスターサブレ or サブレ（排他）
+  sableCount: number             // 1回目睡眠: サブレの使用個数
+  sableSlot2: string | null      // 2回目睡眠: マスターサブレ or サブレ（排他）
+  sableCount2: number            // 2回目睡眠: サブレの使用個数
+  carryoverSlot: string | null   // 最終日のみ / メインおこう持ち越し専用
 }
 
-const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, slot3: null, slot4: null, splitSleep: false, mondaySlot: null, mondayWhistleCount: 1, campSlot: null, sableSlot: null, sableCount: 1, sableSlot2: null, sableCount2: 1, carryoverSlot: null })
+const EMPTY_SLOTS = (): DaySlots => ({ slot1: null, slot2: null, slot3: null, slot4: null, splitSleep: false, sableSlot: null, sableCount: 1, sableSlot2: null, sableCount2: 1, carryoverSlot: null })
 
 // ─── うもう必要数計算（提案ロジック復活時に使用 — 現在は無効化）─────────────────
 /*
@@ -358,8 +354,6 @@ export function EventCalendar() {
         + (s.slot2 === id ? 1 : 0)
         + (s.slot3 === id ? 1 : 0)
         + (s.slot4 === id ? 1 : 0)
-        + (s.mondaySlot === id ? (id === "help-whistle" ? s.mondayWhistleCount : 1) : 0)
-        + (s.campSlot === id ? 1 : 0)
         + (s.sableSlot === id ? (id === mainSableId ? s.sableCount : 1) : 0)
         + (s.sableSlot2 === id ? (id === mainSableId ? s.sableCount2 : 1) : 0)
         + (s.carryoverSlot === id ? 1 : 0)
@@ -404,8 +398,6 @@ export function EventCalendar() {
     }
     const curMainId = currentEvent.mainIncenseId
     const curSableId = currentEvent.umouPrices.mainSableId
-    if (slot === "mondaySlot"    && dragId !== "help-whistle") return
-    if (slot === "campSlot"      && dragId !== "good-camp")    return
     if (slot === "sableSlot"     && dragId !== "master-sable" && dragId !== curSableId) return
     if (slot === "sableSlot2"    && dragId !== "master-sable" && dragId !== curSableId) return
     if (slot === "carryoverSlot" && dragId !== curMainId) return
@@ -505,8 +497,6 @@ export function EventCalendar() {
     }
     const curMainId = currentEvent.mainIncenseId
     const curSableId = currentEvent.umouPrices.mainSableId
-    if (slot === "mondaySlot"    && id !== "help-whistle") return
-    if (slot === "campSlot"      && id !== "good-camp")    return
     if (slot === "sableSlot"     && id !== "master-sable" && id !== curSableId) return
     if (slot === "sableSlot2"    && id !== "master-sable" && id !== curSableId) return
     if (slot === "carryoverSlot" && id !== curMainId) return
@@ -567,7 +557,6 @@ export function EventCalendar() {
         [dayIndex]: {
           ...day,
           [slot]: null,
-          ...(slot === "mondaySlot" ? { mondayWhistleCount: 1 } : {}),
           ...(slot === "sableSlot" ? { sableCount: 1 } : {}),
           ...(slot === "sableSlot2" ? { sableCount2: 1 } : {}),
           ...(shouldClearSable1 ? { sableSlot: null, sableCount: 1 } : {}),
@@ -604,19 +593,6 @@ export function EventCalendar() {
       const max = (inventory[sid] ?? 0) - otherUsed - selfOther
       const newCount = Math.max(1, Math.min(max, value))
       return { ...prev, [dayIndex]: { ...s, sableCount2: newCount } }
-    })
-  }
-
-  function changeMondayWhistleCount(dayIndex: number, delta: number) {
-    setDaySlots(prev => {
-      const s = prev[dayIndex]
-      if (s.mondaySlot !== "help-whistle") return prev
-      const otherUsed = Object.entries(prev)
-        .filter(([di]) => Number(di) !== dayIndex)
-        .reduce((sum, [, ds]) => sum + (ds.mondaySlot === "help-whistle" ? ds.mondayWhistleCount : 0), 0)
-      const max = (inventory["help-whistle"] ?? 0) - otherUsed
-      const newCount = Math.max(1, Math.min(max, delta))
-      return { ...prev, [dayIndex]: { ...s, mondayWhistleCount: newCount } }
     })
   }
 
@@ -759,15 +735,15 @@ export function EventCalendar() {
           </div>
         </div>
 
-        {/* 下段: 在庫パレット */}
+        {/* 下段: バッグ */}
         <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2">
           <div className="flex items-center justify-between mb-1.5">
-            <p className="text-[9px] font-medium text-gray-500">在庫パレット <span className="text-gray-400">— タップ or ドラッグで配置</span></p>
+            <p className="text-[9px] font-medium text-gray-500">バッグ <span className="text-gray-400">— タップ or ドラッグで配置</span></p>
             <button
               onClick={clearPlan}
               className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
             >
-              全て在庫に戻す
+              全てバッグに戻す
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -852,11 +828,6 @@ export function EventCalendar() {
                   e.dataTransfer.setDragImage(e.target as Element, 20, 20)
                 }}
                 onTapFromSlot={(slot, itemId) => onTapFromSlot(day.dayIndex, slot, itemId)}
-                onWhistleCountChange={(value) => changeMondayWhistleCount(day.dayIndex, value)}
-                whistleMax={(() => {
-                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.mondaySlot === "help-whistle" ? ds.mondayWhistleCount : 0), 0)
-                  return Math.max(1, (inventory["help-whistle"] ?? 0) - otherUsed)
-                })()}
                 onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
                 sableMax={(() => {
                   const sid = currentEvent.umouPrices.mainSableId
@@ -907,11 +878,6 @@ export function EventCalendar() {
                 setDragSource({ dayIndex: day.dayIndex, slot })
                 e.dataTransfer.setDragImage(e.target as Element, 20, 20)
               }}
-              onWhistleCountChange={(value) => changeMondayWhistleCount(day.dayIndex, value)}
-              whistleMax={(() => {
-                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.mondaySlot === "help-whistle" ? ds.mondayWhistleCount : 0), 0)
-                return Math.max(1, (inventory["help-whistle"] ?? 0) - otherUsed)
-              })()}
               onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
               sableMax={(() => {
                 const sid = currentEvent.umouPrices.mainSableId
@@ -1067,8 +1033,6 @@ interface DayCellProps {
   onTapFromSlot: (slot: keyof DaySlots, itemId: string) => void
   onClearSlot: (slot: keyof DaySlots) => void
   onDragFromSlot: (slot: keyof DaySlots, itemId: string, e: React.DragEvent) => void
-  onWhistleCountChange: (value: number) => void
-  whistleMax: number
   onSableCountChange: (value: number) => void
   sableMax: number
   onSableCountChange2: (value: number) => void
@@ -1186,12 +1150,11 @@ function ItemSlot({
 function DayCell({
   day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
-  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onWhistleCountChange, whistleMax, onSableCountChange, sableMax, onSableCountChange2, sableMax2, todayDayIndex, onToggleSplitSleep,
+  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onSableCountChange, sableMax, onSableCountChange2, sableMax2, todayDayIndex, onToggleSplitSleep,
   mainIncenseId, mainSableId, sableIncenseSet,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
-  const isMonday = day.dayOfWeek === "月"
   // ドラッグ中のアイテムがこのスロットに入れるかどうか
   const dragIsIncense = dragId ? isIncenseItem(dragId) : false
 
@@ -1315,37 +1278,6 @@ function DayCell({
                   onDragFromSlot={slots.sableSlot2 ? (e) => onDragFromSlot("sableSlot2", slots.sableSlot2!, e) : undefined}
                 />
               )}
-            </div>
-          )}
-
-          {/* 月曜専用スロット */}
-          {isMonday && (
-            <div className="flex gap-0.5">
-              <ItemSlot
-                itemId={slots.mondaySlot}
-                isOver={isDragOver && dragId === "help-whistle" && !slots.mondaySlot}
-                isTapTarget={tapSelectedId === "help-whistle" && !slots.mondaySlot}
-                isTapSelected={tapSelectedId === slots.mondaySlot && !!slots.mondaySlot}
-                hasTapSelected={!!tapSelectedId}
-                monday
-                bgImageUrls={[getIncenseById("help-whistle")?.imageUrl ?? ""]}
-                count={slots.mondaySlot === "help-whistle" ? slots.mondayWhistleCount : undefined}
-                maxCount={whistleMax}
-                onCountChange={slots.mondaySlot === "help-whistle" ? onWhistleCountChange : undefined}
-                onDrop={() => onDropSlot("mondaySlot")} onTap={() => onTapSlot("mondaySlot")} onTapItem={slots.mondaySlot ? () => onTapFromSlot("mondaySlot", slots.mondaySlot!) : undefined} onClear={() => onClearSlot("mondaySlot")}
-                onDragFromSlot={slots.mondaySlot ? (e) => onDragFromSlot("mondaySlot", slots.mondaySlot!, e) : undefined}
-              />
-              <ItemSlot
-                itemId={slots.campSlot}
-                isOver={isDragOver && dragId === "good-camp" && !slots.campSlot}
-                isTapTarget={tapSelectedId === "good-camp" && !slots.campSlot}
-                isTapSelected={tapSelectedId === slots.campSlot && !!slots.campSlot}
-                hasTapSelected={!!tapSelectedId}
-                monday
-                bgImageUrls={[getIncenseById("good-camp")?.imageUrl ?? ""]}
-                onDrop={() => onDropSlot("campSlot")} onTap={() => onTapSlot("campSlot")} onTapItem={slots.campSlot ? () => onTapFromSlot("campSlot", slots.campSlot!) : undefined} onClear={() => onClearSlot("campSlot")}
-                onDragFromSlot={slots.campSlot ? (e) => onDragFromSlot("campSlot", slots.campSlot!, e) : undefined}
-              />
             </div>
           )}
 

@@ -9,9 +9,7 @@ export type EffectType =
   | "pokemon-exp"  // ポケモンEXP系
   | "chance"       // チャンス確定系
   | "pokemon"      // ポケモン出現系
-  | "camp"         // キャンプチケット（7日間効果）
   | "treat"        // おやつ系（おこうと別枠）
-  | "whistle"      // おてつだい頻度系
 
 export interface IncenseMaster {
   id: string
@@ -132,34 +130,6 @@ export const INCENSE_MASTERS: IncenseMaster[] = [
     effectShort: "ラティアス出現",
     effectDetail: "ラティアスが追加枠として出現する。こううんのおこうと組み合わせて大量のゆめのかけらを狙える。",
     color: "bg-purple-500/20 text-purple-300 border-purple-500/40",
-    preferWeekend: true,
-    preferLate: false,
-    preferEarlyWeek: false,
-    spreadEvenly: false,
-  },
-  {
-    id: "good-camp",
-    name: "いいキャンプチケット",
-    icon: "🎟️",
-    imageUrl: "/img/ticket_good_camp.png",
-    effectType: "camp",
-    effectShort: "7日間キャンプ拡張",
-    effectDetail: "7日間、おやつタイムにポケモンが1匹追加で出現し、そのポケモンが確定チャンス状態になる。ラティアスのおこうと同時使用で最大11匹出現。",
-    color: "bg-teal-500/20 text-teal-300 border-teal-500/40",
-    preferWeekend: false,
-    preferLate: false,
-    preferEarlyWeek: true,
-    spreadEvenly: false,
-  },
-  {
-    id: "help-whistle",
-    name: "おてつだいホイッスル",
-    icon: "📯",
-    imageUrl: "/img/whistle_help.webp",
-    effectType: "whistle",
-    effectShort: "おてつだい頻度UP",
-    effectDetail: "次回の睡眠リサーチで、おてつだいポケモンが即座に1回おてつだいを行う。食材・きのみの回収に有効。",
-    color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
     preferWeekend: true,
     preferLate: false,
     preferEarlyWeek: false,

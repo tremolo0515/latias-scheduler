@@ -53,8 +53,6 @@ export interface SpecialDayConfig {
   specialDayIndices: Set<number>
   /** 特別な日のラベル */
   specialDayLabel?: string
-  /** キャンプチケットを置くdayIndex一覧（月曜固定） */
-  campDayIndices: number[]
 }
 
 export interface EventBarDef {
@@ -201,11 +199,10 @@ export const EVENTS: PokeSleepEvent[] = [
     specialDays: {
       specialDayIndices: new Set([10, 11, 12]),  // 4/16(木)〜4/18(土) ニュームーン
       specialDayLabel: "ニュームーンデー",
-      campDayIndices: [0, 7],  // 4/6(月), 4/13(月)
     },
     itemIds: [
       "kaifuku", "shuuchuu", "kouun", "seichou", "nakayoshi", "pokemon",
-      "latias", "good-camp", "help-whistle", "master-sable", "latias-sable",
+      "latias", "master-sable", "latias-sable",
     ],
     mainIncenseId: "latias",
     umouShop: {
@@ -305,11 +302,10 @@ export const EVENTS: PokeSleepEvent[] = [
     specialDays: {
       specialDayIndices: new Set([6, 7, 8]),  // 6/14(日)〜6/16(火) ニュームーン
       specialDayLabel: "ニュームーンデー",
-      campDayIndices: [0, 7],  // 6/8(月), 6/15(月)
     },
     itemIds: [
       "kaifuku", "shuuchuu", "kouun", "seichou", "nakayoshi", "pokemon",
-      "latios", "latias", "good-camp", "help-whistle", "master-sable", "latios-sable",
+      "latios", "latias", "master-sable", "latios-sable",
     ],
     mainIncenseId: "latios",
     sableIncenseIds: ["latias"],  // ラティアスのおこうを置いた日もサブレスロット出現
