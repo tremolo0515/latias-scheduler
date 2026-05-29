@@ -677,9 +677,31 @@ export function EventCalendar() {
             {currentEvent.umouShop ? (<>
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs font-semibold text-purple-700">🪶 うもう交換所</p>
-                <div className="flex items-center gap-0.5">
-                  <span className="text-xs font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
-                  <span className="text-[10px] text-purple-500">🪶</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-0.5">
+                    <span className="text-xs font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
+                    <span className="text-[10px] text-purple-500">🪶</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      // shopCounts をリセット → 在庫から交換所加算分を差し引く
+                      const shop = currentEvent.umouShop!
+                      setInventory(inv => {
+                        const next = { ...inv }
+                        shop.weeks.forEach((week, wi) => {
+                          week.entries.forEach((entry, ei) => {
+                            const val = shopCounts[`${wi}-${ei}`] ?? 0
+                            if (entry.itemId && val > 0) {
+                              next[entry.itemId] = Math.max(0, (next[entry.itemId] ?? 0) - val * entry.itemQty)
+                            }
+                          })
+                        })
+                        return next
+                      })
+                      setShopCounts({})
+                    }}
+                    className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
+                  >リセット</button>
                 </div>
               </div>
               {currentEvent.umouShop.weeks.map((week, wi) => (
@@ -726,8 +748,22 @@ export function EventCalendar() {
                 item: getIncenseById(ci.itemId)!,
                 max: ci.max,
               })).filter(ci => ci.item)
+              const allOtherIds = [
+                ...carryInItems.map(ci => ci.item.id),
+                ...otherItems.map(i => i.id),
+              ]
               return (<>
-                <p className="text-xs font-semibold text-gray-600 mb-1">その他どうぐ</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-semibold text-gray-600">その他どうぐ</p>
+                  <button
+                    onClick={() => setInventory(prev => {
+                      const next = { ...prev }
+                      allOtherIds.forEach(id => { next[id] = 0 })
+                      return next
+                    })}
+                    className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
+                  >リセット</button>
+                </div>
                 {/* 持込アイテム（うもう合計に影響しない） */}
                 {carryInItems.map(({ item, max }) => {
                   const qty = inventory[item.id] ?? 0
