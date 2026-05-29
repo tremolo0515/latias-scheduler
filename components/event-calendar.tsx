@@ -549,6 +549,23 @@ export function EventCalendar() {
     setTapSource({ dayIndex, slot })
   }
 
+  // D&D: バッグエリアにドロップ → スロットからアイテムを除去
+  function onDropToBag() {
+    if (!dragSource) { setDragId(null); setDragSource(null); setDragOverDay(null); return }
+    const { dayIndex, slot } = dragSource
+    const sid = currentEvent.umouPrices.mainSableId
+    const s = daySlots[dayIndex]
+    // 複数配置スロットで count ≥ 2 の場合は -1、それ以外は clearSlot
+    if (slot === "sableSlot" && s.sableSlot === sid && s.sableCount >= 2) {
+      setDaySlots(prev => ({ ...prev, [dayIndex]: { ...prev[dayIndex], sableCount: prev[dayIndex].sableCount - 1 } }))
+    } else if (slot === "sableSlot2" && s.sableSlot2 === sid && s.sableCount2 >= 2) {
+      setDaySlots(prev => ({ ...prev, [dayIndex]: { ...prev[dayIndex], sableCount2: prev[dayIndex].sableCount2 - 1 } }))
+    } else {
+      clearSlot(dayIndex, slot)
+    }
+    setDragId(null); setDragSource(null); setDragOverDay(null)
+  }
+
   function clearSlot(dayIndex: number, slot: keyof DaySlots) {
     setDaySlots(prev => {
       const day = prev[dayIndex]
@@ -804,8 +821,15 @@ export function EventCalendar() {
           </div>
         </div>
 
-        {/* 下段: バッグ */}
-        <div className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2">
+        {/* 下段: バッグ（スロットからのD&Dドロップ先） */}
+        <div
+          className={cn(
+            "rounded-xl border bg-gray-50/60 px-3 py-2 transition-colors",
+            dragSource ? "border-blue-300 bg-blue-50/40" : "border-gray-200",
+          )}
+          onDragOver={(e) => { if (dragSource) e.preventDefault() }}
+          onDrop={() => onDropToBag()}
+        >
           <div className="flex items-center justify-between mb-1.5">
             <p className="text-[9px] font-medium text-gray-500">バッグ <span className="text-gray-400">— タップ or ドラッグで配置</span></p>
             <button
