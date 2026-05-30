@@ -867,9 +867,6 @@ export function EventCalendar() {
                 />
               )
             })}
-            {eventItems.every(i => Math.max(0, (inventory[i.id] ?? 0) - usedCount(i.id)) === 0) && (
-              <p className="text-[9px] text-blue-300 italic">在庫を追加すると、ここにアイテムが並びます</p>
-            )}
           </div>
         </div>
       </section>
@@ -1091,7 +1088,7 @@ function InventoryTile({
       onDragEnd={onDragEnd}
       data-tap-item
       onClick={onTap}
-      title={`${incense.name}（残${remaining}）`}
+      title={isOverflow ? `${incense.name}（${Math.abs(remaining)}個足りません）` : `${incense.name}（残${remaining}）`}
       className={cn(
         "relative w-11 h-11 flex items-center justify-center rounded-xl select-none transition-all",
         isOverflow ? "cursor-default" : "cursor-grab active:cursor-grabbing",
