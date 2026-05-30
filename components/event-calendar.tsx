@@ -1019,9 +1019,38 @@ export function EventCalendar() {
         {[
           { label: "第1週", days: week1, weekIdx: 0 },
           { label: "第2週", days: week2, weekIdx: 1 },
-        ].map(({ label, days, weekIdx }) => (
+        ].map(({ label, days, weekIdx }) => {
+          // この週に表示するイベントバー
+          const weekBars = currentEvent.calendarEvents.filter(ev => ev.week === weekIdx)
+          return (
           <section key={label} className="mb-3">
-            <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 px-1">{label}</h2>
+            {/* 週ラベル + イベントバッジ */}
+            <div className="flex items-center gap-1.5 mb-1 px-1 flex-wrap">
+              <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest shrink-0">{label}</h2>
+              {weekBars.map(ev => {
+                // 全日（colSpan=7）かどうか
+                const isFullWeek = ev.colSpan === 7
+                // 部分バーの場合、該当する日付を取得
+                const dateLabel = isFullWeek ? null : (() => {
+                  const startDayIndex = weekIdx * 7 + (ev.colStart - 1)
+                  const endDayIndex   = startDayIndex + ev.colSpan - 1
+                  const startDay = eventDays[startDayIndex]
+                  const endDay   = eventDays[endDayIndex]
+                  if (!startDay) return null
+                  return startDay.date === endDay?.date
+                    ? `${startDay.date}日`
+                    : `${startDay.date}〜${endDay?.date}日`
+                })()
+                return (
+                  <span key={ev.id} className={cn(
+                    "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none",
+                    ev.barColor, ev.textColor,
+                  )}>
+                    {ev.name}{dateLabel && <span className="opacity-80 ml-0.5">({dateLabel})</span>}
+                  </span>
+                )
+              })}
+            </div>
             <div className="flex flex-col gap-1.5">
               {days.map(day => (
                 <DayRow
@@ -1069,7 +1098,8 @@ export function EventCalendar() {
               ))}
             </div>
           </section>
-        ))}
+          )
+        })}
 
         {/* ── メモエリア（スマホ） ── */}
         <div className="mt-2 pb-8">
