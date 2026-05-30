@@ -724,7 +724,7 @@ export function EventCalendar() {
               </div>
               {currentEvent.umouShop.weeks.map((week, wi) => (
                 <div key={wi} className="mb-1">
-                  <p className="text-[11px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
+                  <p className="text-[12px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
                   {/* 全行を1つのgridに入れることでうもう量列が縦揃え */}
                   <div className="grid items-center" style={{ gridTemplateColumns: "1.25rem auto auto 1fr 1.25rem auto 1.25rem", rowGap: "3px", columnGap: "10px" }}>
                     {week.entries.map((entry, ei) => {
@@ -736,14 +736,14 @@ export function EventCalendar() {
                           ? <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain" />
                           : <span />
                         }
-                        <span className="text-[11px] text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
-                        <span className="text-[11px] text-purple-400 whitespace-nowrap">{entry.umouCost}🪶</span>
+                        <span className="text-[13px] text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
+                        <span className="text-[13px] text-purple-400 whitespace-nowrap">{entry.umouCost}🪶</span>
                         <span />
                         <button onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
-                          className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none">－</button>
-                        <span className="text-[11px] font-bold text-gray-800 text-center">{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
+                          className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none">－</button>
+                        <span className="text-[13px] font-bold text-gray-800 text-center">{val}<span className="text-gray-400 font-bold">/{entry.maxCount}</span></span>
                         <button onClick={() => handleShopCount(wi, ei, entry, Math.min(entry.maxCount, val + 1))}
-                          className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none">＋</button>
+                          className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none">＋</button>
                       </Fragment>)
                     })}
                   </div>
@@ -791,12 +791,12 @@ export function EventCalendar() {
                   return (
                     <div key={`carryin-${item.id}`} className="flex items-center gap-1 py-0.5">
                       <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain shrink-0" />
-                      <span className="text-[11px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}<span className="text-[9px] text-gray-400 ml-0.5">（持込）</span></span>
+                      <span className="text-[13px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}<span className="text-[10px] text-gray-400 ml-0.5">（持込）</span></span>
                       <button onClick={() => setInventory(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
-                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none shrink-0">－</button>
-                      <span className="text-[11px] font-bold text-gray-800 w-5 text-center shrink-0">{qty}</span>
+                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none shrink-0">－</button>
+                      <span className="text-[13px] font-bold text-gray-800 w-5 text-center shrink-0">{qty}</span>
                       <button onClick={() => { setInventory(prev => ({ ...prev, [item.id]: Math.min(max, qty + 1) })); flashItem(item.id) }}
-                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none shrink-0">＋</button>
+                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none shrink-0">＋</button>
                     </div>
                   )
                 })}
@@ -807,12 +807,12 @@ export function EventCalendar() {
                   return (
                     <div key={item.id} className="flex items-center gap-1 py-0.5">
                       <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain shrink-0" />
-                      <span className="text-[11px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}</span>
+                      <span className="text-[13px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}</span>
                       <button onClick={() => setInventory(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
-                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none shrink-0">－</button>
-                      <span className="text-[11px] font-bold text-gray-800 w-5 text-center shrink-0">{qty}</span>
+                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none shrink-0">－</button>
+                      <span className="text-[13px] font-bold text-gray-800 w-5 text-center shrink-0">{qty}</span>
                       <button onClick={() => { setInventory(prev => ({ ...prev, [item.id]: Math.min(max, qty + 1) })); flashItem(item.id) }}
-                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[11px] font-bold leading-none shrink-0">＋</button>
+                        className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none shrink-0">＋</button>
                     </div>
                   )
                 })}
