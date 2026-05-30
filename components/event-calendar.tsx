@@ -686,11 +686,11 @@ export function EventCalendar() {
       {/* ── 在庫エリア ── */}
       <section className="mb-2 flex flex-col gap-1.5">
 
-        {/* 上段: うもう交換所 + その他 を1枚のカードに統合 */}
-        <div className="flex rounded-xl border border-gray-200 bg-white overflow-hidden">
+        {/* 上段: うもう交換所 + その他 を1枚のカードに統合（スマホでは縦並び） */}
+        <div className="flex flex-col md:flex-row rounded-xl border border-gray-200 bg-white overflow-hidden">
 
           {/* うもう交換所 */}
-          <div className="flex-1 min-w-0 p-2" style={{ borderRight: "1px solid rgba(0,0,0,0.06)" }}>
+          <div className="flex-1 min-w-0 p-2 border-b md:border-b-0 md:border-r border-black/6">
             {currentEvent.umouShop ? (<>
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs font-semibold text-purple-700">🪶 うもう交換所</p>
@@ -873,8 +873,9 @@ export function EventCalendar() {
 
 
       {/* ── カレンダーグリッド ── */}
+      {/* ── カレンダー: デスクトップ（7列グリッド） ── */}
       <main
-        className="overflow-x-auto"
+        className="hidden md:block overflow-x-auto"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -917,7 +918,6 @@ export function EventCalendar() {
                 onDragFromSlot={(slot, itemId, e) => {
                   setDragId(itemId)
                   setDragSource({ dayIndex: day.dayIndex, slot })
-                  // e.target はスロット内の<img>要素（既ロード済み）
                   e.dataTransfer.setDragImage(e.target as Element, 20, 20)
                 }}
                 onTapFromSlot={(slot, itemId) => onTapFromSlot(day.dayIndex, slot, itemId)}
@@ -952,56 +952,56 @@ export function EventCalendar() {
 
         {/* Week 2（バーをオーバーレイ） */}
         <div className="relative">
-        <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 9rem)" }}>
-          {week2.map(day => (
-            <DayCell
-              key={day.date}
-              day={day}
-              slots={daySlots[day.dayIndex]}
-              isDragOver={dragOverDay === day.dayIndex}
-              dragId={dragId}
-              tapSelectedId={tapSelectedId}
-              onDragOver={(e) => { e.preventDefault(); setDragOverDay(day.dayIndex) }}
-              onDragLeave={() => setDragOverDay(null)}
-              onDropSlot={(slot) => onDropSlot(day.dayIndex, slot)}
-              onTapSlot={(slot) => onTapSlot(day.dayIndex, slot)}
-              onTapFromSlot={(slot, itemId) => onTapFromSlot(day.dayIndex, slot, itemId)}
-              onClearSlot={(slot) => clearSlot(day.dayIndex, slot)}
-              onDragFromSlot={(slot, itemId, e) => {
-                setDragId(itemId)
-                setDragSource({ dayIndex: day.dayIndex, slot })
-                e.dataTransfer.setDragImage(e.target as Element, 20, 20)
-              }}
-              onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
-              sableMax={(() => {
-                const sid = currentEvent.umouPrices.mainSableId
-                const s = daySlots[day.dayIndex]
-                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
-                return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
-              })()}
-              onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
-              sableMax2={(() => {
-                const sid = currentEvent.umouPrices.mainSableId
-                const s = daySlots[day.dayIndex]
-                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
-                return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
-              })()}
-              todayDayIndex={todayDayIndex}
-              onToggleSplitSleep={() => setDaySlots(prev => ({
-                ...prev,
-                [day.dayIndex]: { ...prev[day.dayIndex], splitSleep: !prev[day.dayIndex].splitSleep, slot3: null, slot4: null }
-              }))}
-              mainIncenseId={currentEvent.mainIncenseId}
-              mainSableId={currentEvent.umouPrices.mainSableId}
-              sableIncenseSet={sableIncenseSet}
-              sableIncenseIds={currentEvent.sableIncenseIds ?? []}
-            />
-          ))}
-        </div>
+          <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 9rem)" }}>
+            {week2.map(day => (
+              <DayCell
+                key={day.date}
+                day={day}
+                slots={daySlots[day.dayIndex]}
+                isDragOver={dragOverDay === day.dayIndex}
+                dragId={dragId}
+                tapSelectedId={tapSelectedId}
+                onDragOver={(e) => { e.preventDefault(); setDragOverDay(day.dayIndex) }}
+                onDragLeave={() => setDragOverDay(null)}
+                onDropSlot={(slot) => onDropSlot(day.dayIndex, slot)}
+                onTapSlot={(slot) => onTapSlot(day.dayIndex, slot)}
+                onTapFromSlot={(slot, itemId) => onTapFromSlot(day.dayIndex, slot, itemId)}
+                onClearSlot={(slot) => clearSlot(day.dayIndex, slot)}
+                onDragFromSlot={(slot, itemId, e) => {
+                  setDragId(itemId)
+                  setDragSource({ dayIndex: day.dayIndex, slot })
+                  e.dataTransfer.setDragImage(e.target as Element, 20, 20)
+                }}
+                onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
+                sableMax={(() => {
+                  const sid = currentEvent.umouPrices.mainSableId
+                  const s = daySlots[day.dayIndex]
+                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+                  return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
+                })()}
+                onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
+                sableMax2={(() => {
+                  const sid = currentEvent.umouPrices.mainSableId
+                  const s = daySlots[day.dayIndex]
+                  const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+                  return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
+                })()}
+                todayDayIndex={todayDayIndex}
+                onToggleSplitSleep={() => setDaySlots(prev => ({
+                  ...prev,
+                  [day.dayIndex]: { ...prev[day.dayIndex], splitSleep: !prev[day.dayIndex].splitSleep, slot3: null, slot4: null }
+                }))}
+                mainIncenseId={currentEvent.mainIncenseId}
+                mainSableId={currentEvent.umouPrices.mainSableId}
+                sableIncenseSet={sableIncenseSet}
+                sableIncenseIds={currentEvent.sableIncenseIds ?? []}
+              />
+            ))}
+          </div>
           <EventBarsOverlay week={1} calendarEvents={currentEvent.calendarEvents} activeTooltipId={activeTooltip?.id ?? null} onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })} />
         </div>
 
-        {/* ── メモエリア ── */}
+        {/* ── メモエリア（デスクトップ） ── */}
         <div className="mt-2 pb-6">
           <p className="text-xs text-gray-500 mb-2"><span className="font-medium text-gray-700">メモ</span></p>
           <textarea
@@ -1011,6 +1011,75 @@ export function EventCalendar() {
             className="w-full min-h-40 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-800 placeholder-gray-300 resize-y focus:outline-none focus:border-blue-400 leading-relaxed"
           />
         </div>
+        </div>
+      </main>
+
+      {/* ── カレンダー: スマホ（縦リスト） ── */}
+      <main className="block md:hidden px-3">
+        {[
+          { label: "第1週", days: week1, weekIdx: 0 },
+          { label: "第2週", days: week2, weekIdx: 1 },
+        ].map(({ label, days, weekIdx }) => (
+          <section key={label} className="mb-3">
+            <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 px-1">{label}</h2>
+            <div className="flex flex-col gap-1.5">
+              {days.map(day => (
+                <DayRow
+                  key={day.date}
+                  day={day}
+                  weekIdx={weekIdx}
+                  slots={daySlots[day.dayIndex]}
+                  isDragOver={false}
+                  dragId={null}
+                  tapSelectedId={tapSelectedId}
+                  activeTooltipId={activeTooltip?.id ?? null}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragLeave={() => {}}
+                  onDropSlot={(slot) => onDropSlot(day.dayIndex, slot)}
+                  onTapSlot={(slot) => onTapSlot(day.dayIndex, slot)}
+                  onTapFromSlot={(slot, itemId) => onTapFromSlot(day.dayIndex, slot, itemId)}
+                  onClearSlot={(slot) => clearSlot(day.dayIndex, slot)}
+                  onDragFromSlot={() => {}}
+                  onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
+                  sableMax={(() => {
+                    const sid = currentEvent.umouPrices.mainSableId
+                    const s = daySlots[day.dayIndex]
+                    const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+                    return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
+                  })()}
+                  onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
+                  sableMax2={(() => {
+                    const sid = currentEvent.umouPrices.mainSableId
+                    const s = daySlots[day.dayIndex]
+                    const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+                    return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
+                  })()}
+                  todayDayIndex={todayDayIndex}
+                  onToggleSplitSleep={() => setDaySlots(prev => ({
+                    ...prev,
+                    [day.dayIndex]: { ...prev[day.dayIndex], splitSleep: !prev[day.dayIndex].splitSleep, slot3: null, slot4: null }
+                  }))}
+                  mainIncenseId={currentEvent.mainIncenseId}
+                  mainSableId={currentEvent.umouPrices.mainSableId}
+                  sableIncenseSet={sableIncenseSet}
+                  sableIncenseIds={currentEvent.sableIncenseIds ?? []}
+                  calendarEvents={currentEvent.calendarEvents}
+                  onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+
+        {/* ── メモエリア（スマホ） ── */}
+        <div className="mt-2 pb-8">
+          <p className="text-xs text-gray-500 mb-2"><span className="font-medium text-gray-700">メモ</span></p>
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="自由にメモできます"
+            className="w-full min-h-40 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-800 placeholder-gray-300 resize-y focus:outline-none focus:border-blue-400 leading-relaxed"
+          />
         </div>
       </main>
 
@@ -1471,6 +1540,276 @@ function EventBarsOverlay({
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ─── DayRow（スマホ縦リスト用） ───────────────────────────────
+
+interface DayRowProps {
+  day: DayInfo
+  weekIdx: number
+  slots: DaySlots
+  isDragOver: boolean
+  dragId: string | null
+  tapSelectedId: string | null
+  activeTooltipId: string | null
+  onDragOver: (e: React.DragEvent) => void
+  onDragLeave: () => void
+  onDropSlot: (slot: keyof DaySlots) => void
+  onTapSlot: (slot: keyof DaySlots) => void
+  onTapFromSlot: (slot: keyof DaySlots, itemId: string) => void
+  onClearSlot: (slot: keyof DaySlots) => void
+  onDragFromSlot: (slot: keyof DaySlots, itemId: string, e: React.DragEvent) => void
+  onSableCountChange: (value: number) => void
+  sableMax: number
+  onSableCountChange2: (value: number) => void
+  sableMax2: number
+  todayDayIndex: number
+  onToggleSplitSleep: () => void
+  mainIncenseId: string
+  mainSableId: string
+  sableIncenseSet: Set<string>
+  sableIncenseIds: string[]
+  calendarEvents: PokeSleepEvent["calendarEvents"]
+  onBarClick: (id: string, x: number, y: number) => void
+}
+
+function DayRow({
+  day, weekIdx, slots, isDragOver, dragId, tapSelectedId, activeTooltipId,
+  onDragOver, onDragLeave,
+  onDropSlot, onTapSlot, onTapFromSlot, onClearSlot,
+  onSableCountChange, sableMax, onSableCountChange2, sableMax2,
+  todayDayIndex, onToggleSplitSleep,
+  mainIncenseId, mainSableId, sableIncenseSet, sableIncenseIds,
+  calendarEvents, onBarClick,
+}: DayRowProps) {
+  const isSat = day.dayOfWeek === "土"
+  const isSun = day.dayOfWeek === "日"
+  const isToday = day.dayIndex === todayDayIndex
+  const dragIsIncense = dragId ? isIncenseItem(dragId) : false
+
+  // このdayに表示するイベントバー
+  const col = day.dayIndex % 7
+  const bars = calendarEvents.filter(ev =>
+    ev.week === weekIdx &&
+    col >= ev.colStart - 1 &&
+    col < ev.colStart - 1 + ev.colSpan
+  )
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border transition-all duration-150 overflow-hidden",
+        isToday   && "border-blue-500 shadow-sm shadow-blue-200",
+        !isToday && isSat  && "border-sky-200",
+        !isToday && isSun  && "border-rose-200",
+        !isToday && !isSat && !isSun && "border-gray-200",
+        isDragOver && "border-blue-400 shadow-sm shadow-blue-200",
+      )}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+    >
+      {/* ── ヘッダー行 ── */}
+      <div className={cn(
+        "flex items-center gap-2 px-3 py-2",
+        isToday   && "bg-blue-50",
+        !isToday && isSat  && "bg-sky-50",
+        !isToday && isSun  && "bg-rose-50",
+        !isToday && !isSat && !isSun && "bg-white",
+        isDragOver && "bg-blue-50",
+      )}>
+        {/* 日付 */}
+        <div className="flex items-center gap-1.5 shrink-0 w-16">
+          <span className={cn(
+            "text-sm font-bold tabular-nums",
+            isToday  && "text-blue-600",
+            !isToday && isSun && "text-rose-500",
+            !isToday && isSat && "text-sky-600",
+            !isToday && !isSat && !isSun && "text-gray-800",
+          )}>
+            {day.date}
+          </span>
+          <span className={cn(
+            "text-xs font-medium",
+            isSun && "text-rose-400",
+            isSat && "text-sky-500",
+            !isSat && !isSun && "text-gray-400",
+          )}>({day.dayOfWeek})</span>
+          {isToday && (
+            <span className="text-[9px] font-bold text-white bg-blue-500 rounded px-1 py-px leading-none">今日</span>
+          )}
+        </div>
+
+        {/* イベントバー（インライン） */}
+        <div className="flex flex-wrap gap-1 flex-1 min-w-0">
+          {bars.map(ev => (
+            <button
+              key={ev.id}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                onBarClick(ev.id, rect.left, rect.bottom)
+              }}
+              className={cn(
+                "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none transition-all",
+                ev.barColor, ev.textColor,
+                activeTooltipId === ev.id && "ring-1 ring-white/60",
+              )}
+            >
+              <span className="opacity-70">ⓘ</span>
+              <span>{ev.name}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* 右側: 分割睡眠トグル */}
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSplitSleep() }}
+            className="flex items-center gap-1"
+            title="分割睡眠"
+          >
+            <span className={cn("text-[9px] font-medium whitespace-nowrap", slots.splitSleep ? "text-blue-500" : "text-gray-400")}>
+              分割睡眠
+            </span>
+            <span className={cn(
+              "relative w-7 h-4 rounded-full transition-colors duration-200 shrink-0",
+              slots.splitSleep ? "bg-blue-500" : "bg-gray-300"
+            )}>
+              <span className={cn(
+                "absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all duration-200",
+                slots.splitSleep ? "left-3.5" : "left-0.5"
+              )} />
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── スロット行 ── */}
+      <div className={cn(
+        "flex flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2",
+        isToday   && "bg-blue-50/40",
+        !isToday && isSat  && "bg-sky-50/40",
+        !isToday && isSun  && "bg-rose-50/40",
+        !isToday && !isSat && !isSun && "bg-white",
+        isDragOver && "bg-blue-50/60",
+      )}>
+        {/* おこうスロット（1回目） + サブレスロット */}
+        <div className="flex items-center gap-0.5">
+          <ItemSlot
+            itemId={slots.slot1} isOver={isDragOver && dragIsIncense && !slots.slot1}
+            isTapTarget={!!tapSelectedId && !slots.slot1}
+            isTapSelected={tapSelectedId === slots.slot1 && !!slots.slot1}
+            hasTapSelected={!!tapSelectedId}
+            bgImageUrls={["/img/okou_normal.png"]}
+            onDrop={() => onDropSlot("slot1")} onTap={() => onTapSlot("slot1")}
+            onTapItem={slots.slot1 ? () => onTapFromSlot("slot1", slots.slot1!) : undefined}
+            onClear={() => onClearSlot("slot1")}
+          />
+          <ItemSlot
+            itemId={slots.slot2} isOver={isDragOver && dragIsIncense && !!slots.slot1 && !slots.slot2}
+            isTapTarget={!!tapSelectedId && !!slots.slot1 && !slots.slot2}
+            isTapSelected={tapSelectedId === slots.slot2 && !!slots.slot2}
+            hasTapSelected={!!tapSelectedId}
+            bgImageUrls={["/img/okou_normal.png"]}
+            onDrop={() => onDropSlot("slot2")} onTap={() => onTapSlot("slot2")}
+            onTapItem={slots.slot2 ? () => onTapFromSlot("slot2", slots.slot2!) : undefined}
+            onClear={() => onClearSlot("slot2")}
+          />
+          {/* サブレスロット（sableIncenseSet配置時のみ） */}
+          {(sableIncenseSet.has(slots.slot1!) || sableIncenseSet.has(slots.slot2!)) && (
+            <ItemSlot
+              itemId={slots.sableSlot}
+              isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot}
+              isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot}
+              isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
+              hasTapSelected={!!tapSelectedId}
+              bgImageUrls={["/img/poke_sable.png"]}
+              count={slots.sableSlot === mainSableId ? slots.sableCount : undefined}
+              maxCount={sableMax}
+              onCountChange={slots.sableSlot === mainSableId ? onSableCountChange : undefined}
+              onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")}
+              onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined}
+              onClear={() => onClearSlot("sableSlot")}
+            />
+          )}
+        </div>
+
+        {/* 分割睡眠 2回目スロット（OFF時も高さ確保） */}
+        <div className="flex items-center gap-0.5" style={slots.splitSleep ? undefined : { visibility: "hidden", pointerEvents: "none" }}>
+          <span className="text-[8px] text-gray-300 mr-0.5">2回目</span>
+          <ItemSlot
+            itemId={slots.slot3} isOver={isDragOver && dragIsIncense && !slots.slot3}
+            isTapTarget={!!tapSelectedId && !slots.slot3}
+            isTapSelected={tapSelectedId === slots.slot3 && !!slots.slot3}
+            hasTapSelected={!!tapSelectedId}
+            bgImageUrls={["/img/okou_normal.png"]}
+            onDrop={() => onDropSlot("slot3")} onTap={() => onTapSlot("slot3")}
+            onTapItem={slots.slot3 ? () => onTapFromSlot("slot3", slots.slot3!) : undefined}
+            onClear={() => onClearSlot("slot3")}
+          />
+          <ItemSlot
+            itemId={slots.slot4} isOver={isDragOver && dragIsIncense && !!slots.slot3 && !slots.slot4}
+            isTapTarget={!!tapSelectedId && !!slots.slot3 && !slots.slot4}
+            isTapSelected={tapSelectedId === slots.slot4 && !!slots.slot4}
+            hasTapSelected={!!tapSelectedId}
+            bgImageUrls={["/img/okou_normal.png"]}
+            onDrop={() => onDropSlot("slot4")} onTap={() => onTapSlot("slot4")}
+            onTapItem={slots.slot4 ? () => onTapFromSlot("slot4", slots.slot4!) : undefined}
+            onClear={() => onClearSlot("slot4")}
+          />
+          {(sableIncenseSet.has(slots.slot3!) || sableIncenseSet.has(slots.slot4!)) && (
+            <ItemSlot
+              itemId={slots.sableSlot2}
+              isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot2}
+              isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot2}
+              isTapSelected={tapSelectedId === slots.sableSlot2 && !!slots.sableSlot2}
+              hasTapSelected={!!tapSelectedId}
+              bgImageUrls={["/img/poke_sable.png"]}
+              count={slots.sableSlot2 === mainSableId ? slots.sableCount2 : undefined}
+              maxCount={sableMax2}
+              onCountChange={slots.sableSlot2 === mainSableId ? onSableCountChange2 : undefined}
+              onDrop={() => onDropSlot("sableSlot2")} onTap={() => onTapSlot("sableSlot2")}
+              onTapItem={slots.sableSlot2 ? () => onTapFromSlot("sableSlot2", slots.sableSlot2!) : undefined}
+              onClear={() => onClearSlot("sableSlot2")}
+            />
+          )}
+        </div>
+
+        {/* 持ち越しスロット（最終日のみ・右寄せ） */}
+        {day.dayIndex === 13 && (
+          <div className="flex gap-0.5 ml-auto w-fit">
+            {sableIncenseSet.size > 1 && (
+              <ItemSlot
+                itemId={slots.carryoverSlot2}
+                isOver={isDragOver && sableIncenseSet.has(dragId!) && dragId !== mainIncenseId && !slots.carryoverSlot2}
+                isTapTarget={!!tapSelectedId && sableIncenseSet.has(tapSelectedId) && tapSelectedId !== mainIncenseId && !slots.carryoverSlot2}
+                isTapSelected={tapSelectedId === slots.carryoverSlot2 && !!slots.carryoverSlot2}
+                hasTapSelected={!!tapSelectedId}
+                label={"持越し"}
+                bgImageUrls={sableIncenseIds.map((id: string) => getIncenseById(id)?.imageUrl ?? "").filter(Boolean)}
+                onDrop={() => onDropSlot("carryoverSlot2")}
+                onTap={() => onTapSlot("carryoverSlot2")}
+                onTapItem={slots.carryoverSlot2 ? () => onTapFromSlot("carryoverSlot2", slots.carryoverSlot2!) : undefined}
+                onClear={() => onClearSlot("carryoverSlot2")}
+              />
+            )}
+            <ItemSlot
+              itemId={slots.carryoverSlot}
+              isOver={isDragOver && dragId === mainIncenseId && !slots.carryoverSlot}
+              isTapTarget={tapSelectedId === mainIncenseId && !slots.carryoverSlot}
+              isTapSelected={tapSelectedId === slots.carryoverSlot && !!slots.carryoverSlot}
+              hasTapSelected={!!tapSelectedId}
+              label={"持越し"}
+              bgImageUrls={[getIncenseById(mainIncenseId)?.imageUrl ?? ""]}
+              onDrop={() => onDropSlot("carryoverSlot")}
+              onTap={() => onTapSlot("carryoverSlot")}
+              onTapItem={slots.carryoverSlot ? () => onTapFromSlot("carryoverSlot", slots.carryoverSlot!) : undefined}
+              onClear={() => onClearSlot("carryoverSlot")}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
