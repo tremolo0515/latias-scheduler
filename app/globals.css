@@ -49,7 +49,7 @@
 
 
 @theme inline {
-  --font-sans: var(--font-geist-sans), 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), 'Geist', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic', sans-serif;
   --font-mono: var(--font-geist-mono), 'Geist Mono', ui-monospace, monospace;
   --color-saturday-bg: var(--saturday-bg);
   --color-sunday-bg: var(--sunday-bg);
