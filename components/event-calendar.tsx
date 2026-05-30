@@ -1042,12 +1042,22 @@ export function EventCalendar() {
                     : `${startDay.date}〜${endDay?.date}日`
                 })()
                 return (
-                  <span key={ev.id} className={cn(
-                    "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none",
-                    ev.barColor, ev.textColor,
-                  )}>
-                    {ev.name}{dateLabel && <span className="opacity-80 ml-0.5">({dateLabel})</span>}
-                  </span>
+                  <button
+                    key={ev.id}
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      setActiveTooltip(prev => prev?.id === ev.id ? null : { id: ev.id, x: rect.left, y: rect.bottom })
+                    }}
+                    className={cn(
+                      "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none transition-all",
+                      ev.barColor, ev.textColor,
+                      activeTooltip?.id === ev.id && "ring-1 ring-white/60",
+                    )}
+                  >
+                    <span className="opacity-70">ⓘ</span>
+                    <span>{ev.name}</span>
+                    {dateLabel && <span className="opacity-80 ml-0.5">({dateLabel})</span>}
+                  </button>
                 )
               })}
             </div>
@@ -1056,12 +1066,10 @@ export function EventCalendar() {
                 <DayRow
                   key={day.date}
                   day={day}
-                  weekIdx={weekIdx}
                   slots={daySlots[day.dayIndex]}
                   isDragOver={false}
                   dragId={null}
                   tapSelectedId={tapSelectedId}
-                  activeTooltipId={activeTooltip?.id ?? null}
                   onDragOver={(e) => e.preventDefault()}
                   onDragLeave={() => {}}
                   onDropSlot={(slot) => onDropSlot(day.dayIndex, slot)}
@@ -1092,8 +1100,6 @@ export function EventCalendar() {
                   mainSableId={currentEvent.umouPrices.mainSableId}
                   sableIncenseSet={sableIncenseSet}
                   sableIncenseIds={currentEvent.sableIncenseIds ?? []}
-                  calendarEvents={currentEvent.calendarEvents}
-                  onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })}
                 />
               ))}
             </div>
@@ -1578,12 +1584,10 @@ function EventBarsOverlay({
 
 interface DayRowProps {
   day: DayInfo
-  weekIdx: number
   slots: DaySlots
   isDragOver: boolean
   dragId: string | null
   tapSelectedId: string | null
-  activeTooltipId: string | null
   onDragOver: (e: React.DragEvent) => void
   onDragLeave: () => void
   onDropSlot: (slot: keyof DaySlots) => void
@@ -1601,31 +1605,20 @@ interface DayRowProps {
   mainSableId: string
   sableIncenseSet: Set<string>
   sableIncenseIds: string[]
-  calendarEvents: PokeSleepEvent["calendarEvents"]
-  onBarClick: (id: string, x: number, y: number) => void
 }
 
 function DayRow({
-  day, weekIdx, slots, isDragOver, dragId, tapSelectedId, activeTooltipId,
+  day, slots, isDragOver, dragId, tapSelectedId,
   onDragOver, onDragLeave,
   onDropSlot, onTapSlot, onTapFromSlot, onClearSlot,
   onSableCountChange, sableMax, onSableCountChange2, sableMax2,
   todayDayIndex, onToggleSplitSleep,
   mainIncenseId, mainSableId, sableIncenseSet, sableIncenseIds,
-  calendarEvents, onBarClick,
 }: DayRowProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
   const isToday = day.dayIndex === todayDayIndex
   const dragIsIncense = dragId ? isIncenseItem(dragId) : false
-
-  // このdayに表示するイベントバー
-  const col = day.dayIndex % 7
-  const bars = calendarEvents.filter(ev =>
-    ev.week === weekIdx &&
-    col >= ev.colStart - 1 &&
-    col < ev.colStart - 1 + ev.colSpan
-  )
 
   return (
     <div
@@ -1669,27 +1662,6 @@ function DayRow({
           {isToday && (
             <span className="text-[9px] font-bold text-white bg-blue-500 rounded px-1 py-px leading-none">今日</span>
           )}
-        </div>
-
-        {/* イベントバー（インライン） */}
-        <div className="flex flex-wrap gap-1 flex-1 min-w-0">
-          {bars.map(ev => (
-            <button
-              key={ev.id}
-              onClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect()
-                onBarClick(ev.id, rect.left, rect.bottom)
-              }}
-              className={cn(
-                "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none transition-all",
-                ev.barColor, ev.textColor,
-                activeTooltipId === ev.id && "ring-1 ring-white/60",
-              )}
-            >
-              <span className="opacity-70">ⓘ</span>
-              <span>{ev.name}</span>
-            </button>
-          ))}
         </div>
 
         {/* 右側: 分割睡眠トグル */}
