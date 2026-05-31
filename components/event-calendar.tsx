@@ -822,10 +822,13 @@ export function EventCalendar() {
         </div>
 
         {/* 下段: バッグ（スロットからのD&Dドロップ先） */}
+        {/* スマホでは sticky で画面上部に固定 */}
         <div
           className={cn(
-            "rounded-xl border bg-gray-50/60 px-3 py-2 transition-colors",
-            dragSource ? "border-blue-300 bg-blue-50/40" : "border-gray-200",
+            "rounded-xl border px-3 py-2 transition-colors",
+            "md:relative md:rounded-xl",
+            "max-md:sticky max-md:top-0 max-md:z-20 max-md:rounded-none max-md:border-x-0 max-md:border-t-0",
+            dragSource ? "border-blue-300 bg-blue-50/40" : "border-gray-200 bg-gray-50/95",
           )}
           onDragOver={(e) => { if (dragSource) e.preventDefault() }}
           onDrop={() => onDropToBag()}
