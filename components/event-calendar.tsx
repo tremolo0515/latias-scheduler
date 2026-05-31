@@ -821,58 +821,58 @@ export function EventCalendar() {
           </div>
         </div>
 
-        {/* 下段: バッグ（スロットからのD&Dドロップ先） */}
-        {/* スマホでは sticky で画面上部に固定 */}
-        <div
-          className={cn(
-            "rounded-xl border px-3 py-2 transition-colors",
-            "md:relative md:rounded-xl",
-            "max-md:sticky max-md:top-0 max-md:z-20 max-md:rounded-none max-md:border-x-0 max-md:border-t-0",
-            dragSource ? "border-blue-300 bg-blue-50/40" : "border-gray-200 bg-gray-50/95",
-          )}
-          onDragOver={(e) => { if (dragSource) e.preventDefault() }}
-          onDrop={() => onDropToBag()}
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <p className="text-[9px] font-medium text-gray-500">バッグ <span className="text-gray-400">— タップ or ドラッグで配置</span></p>
-            <button
-              onClick={() => { if (window.confirm("全てのスロットを空にしますか？")) clearPlan() }}
-              className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
-            >
-              全てバッグに戻す
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {eventItems.map(incense => {
-              const qty = inventory[incense.id] ?? 0
-              const used = usedCount(incense.id)
-              const remaining = qty - used  // 負値 = オーバーフロー
-              const isOverflow = used > qty
-              const canDrag = remaining > 0
-              // 通常: remaining === 0 は非表示。オーバーフロー時は表示してバッジ
-              if (remaining <= 0 && !isOverflow) return null
-              return (
-                <InventoryTile
-                  key={`${incense.id}-${wiggleKeys[incense.id] ?? 0}-${isOverflow ? "ov" : ""}`}
-                  incense={incense}
-                  remaining={Math.max(0, remaining)}
-                  canDrag={canDrag}
-                  isDragging={dragId === incense.id}
-                  isTapSelected={tapSelectedId === incense.id}
-                  isOverflow={isOverflow}
-                  onDragStart={(e) => {
-                    setDragId(incense.id)
-                    const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
-                    if (imgEl) e.dataTransfer.setDragImage(imgEl, 16, 16)
-                  }}
-                  onDragEnd={() => { setDragId(null); setDragSource(null) }}
-                  onTap={() => { if (canDrag) setTapSelectedId(prev => prev === incense.id ? null : incense.id) }}
-                />
-              )
-            })}
-          </div>
-        </div>
       </section>
+
+      {/* ── バッグ（スロットからのD&Dドロップ先） ── */}
+      {/* section の外に出すことで sticky が flex コンテナに阻まれない */}
+      <div
+        className={cn(
+          "px-3 py-2 transition-colors",
+          "sticky top-0 z-20 border-b",
+          "md:static md:mx-4 md:mb-2 md:rounded-xl md:border",
+          dragSource ? "border-blue-300 bg-blue-50/40" : "border-gray-200 bg-gray-50/95",
+        )}
+        onDragOver={(e) => { if (dragSource) e.preventDefault() }}
+        onDrop={() => onDropToBag()}
+      >
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-[9px] font-medium text-gray-500">バッグ <span className="text-gray-400">— タップ or ドラッグで配置</span></p>
+          <button
+            onClick={() => { if (window.confirm("全てのスロットを空にしますか？")) clearPlan() }}
+            className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
+          >
+            全てバッグに戻す
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {eventItems.map(incense => {
+            const qty = inventory[incense.id] ?? 0
+            const used = usedCount(incense.id)
+            const remaining = qty - used
+            const isOverflow = used > qty
+            const canDrag = remaining > 0
+            if (remaining <= 0 && !isOverflow) return null
+            return (
+              <InventoryTile
+                key={`${incense.id}-${wiggleKeys[incense.id] ?? 0}-${isOverflow ? "ov" : ""}`}
+                incense={incense}
+                remaining={Math.max(0, remaining)}
+                canDrag={canDrag}
+                isDragging={dragId === incense.id}
+                isTapSelected={tapSelectedId === incense.id}
+                isOverflow={isOverflow}
+                onDragStart={(e) => {
+                  setDragId(incense.id)
+                  const imgEl = (e.currentTarget as HTMLElement).querySelector('img')
+                  if (imgEl) e.dataTransfer.setDragImage(imgEl, 16, 16)
+                }}
+                onDragEnd={() => { setDragId(null); setDragSource(null) }}
+                onTap={() => { if (canDrag) setTapSelectedId(prev => prev === incense.id ? null : incense.id) }}
+              />
+            )
+          })}
+        </div>
+      </div>
 
 
       {/* ── カレンダーグリッド ── */}
