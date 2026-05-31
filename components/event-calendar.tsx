@@ -827,9 +827,9 @@ export function EventCalendar() {
       {/* section の外に出すことで sticky が flex コンテナに阻まれない */}
       <div
         className={cn(
-          "px-3 py-2 transition-colors",
-          "sticky top-0 z-20 border-b",
-          "md:static md:mx-4 md:mb-2 md:rounded-xl md:border",
+          "px-3 py-2 transition-colors mx-4 mb-2 rounded-xl border",
+          "sticky top-2 z-20",
+          "md:static",
           dragSource ? "border-blue-300 bg-blue-50/40" : "border-gray-200 bg-gray-50/95",
         )}
         onDragOver={(e) => { if (dragSource) e.preventDefault() }}
