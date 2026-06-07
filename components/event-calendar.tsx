@@ -354,8 +354,8 @@ export function EventCalendar() {
     })
     return found ? found.dayIndex : -1
   })()
-  // 残り日数（今日含む）
-  const remainingDays = todayDayIndex >= 0 ? 14 - todayDayIndex : 0
+  // 残り日数（今日含む・イベント本体14日間のみカウント）
+  const remainingDays = todayDayIndex >= 0 && todayDayIndex < 14 ? 14 - todayDayIndex : 0
 
   // 在庫の配置済み合計（全スロット集計）
   const mainSableId = currentEvent.umouPrices.mainSableId
