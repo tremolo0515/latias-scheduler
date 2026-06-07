@@ -414,10 +414,10 @@ export function EventCalendar() {
     if (slot === "sableSlot"      && dragId !== "master-sable" && dragId !== curSableId) return
     if (slot === "sableSlot2"     && dragId !== "master-sable" && dragId !== curSableId) return
     if (slot === "carryoverSlot"  && dragId !== curMainId) return
-    if (slot === "carryoverSlot"  && dayIndex !== 13) return
+    if (slot === "carryoverSlot"  && dayIndex !== 16) return
     if (slot === "carryoverSlot2" && !sableIncenseSet.has(dragId)) return
     if (slot === "carryoverSlot2" && dragId === curMainId) return  // mainは carryoverSlot へ
-    if (slot === "carryoverSlot2" && dayIndex !== 13) return
+    if (slot === "carryoverSlot2" && dayIndex !== 16) return
 
     // 在庫チェック（スロットからの移動は使用数-1で判定）
     const effectiveUsed = dragSource ? usedCount(dragId) - 1 : usedCount(dragId)
@@ -516,10 +516,10 @@ export function EventCalendar() {
     if (slot === "sableSlot"      && id !== "master-sable" && id !== curSableId) return
     if (slot === "sableSlot2"     && id !== "master-sable" && id !== curSableId) return
     if (slot === "carryoverSlot"  && id !== curMainId) return
-    if (slot === "carryoverSlot"  && dayIndex !== 13) return
+    if (slot === "carryoverSlot"  && dayIndex !== 16) return
     if (slot === "carryoverSlot2" && !sableIncenseSet.has(id)) return
     if (slot === "carryoverSlot2" && id === curMainId) return  // mainは carryoverSlot へ
-    if (slot === "carryoverSlot2" && dayIndex !== 13) return
+    if (slot === "carryoverSlot2" && dayIndex !== 16) return
 
     const effectiveUsed = tapSource ? usedCount(id) - 1 : usedCount(id)
     if (effectiveUsed >= (inventory[id] ?? 0)) return
@@ -634,7 +634,7 @@ export function EventCalendar() {
 
   const week1 = eventDays.slice(0, 7)
   const week2 = eventDays.slice(7, 14)
-  const week3 = eventDays.slice(14, 18)  // イベント後: 月〜水(おこう設置可) + 木(持ち越しのみ)
+  const week3 = eventDays.slice(14, 17)  // イベント後: 月〜火(おこう設置可) + 水(持ち越しのみ)
 
   return (
     <>
@@ -1072,7 +1072,7 @@ export function EventCalendar() {
 
         {/* ── メモエリア（デスクトップ） ── */}
         <div className="mt-2 pb-6">
-          <p className="text-xs text-gray-500 mb-2"><span className="font-medium text-gray-700">メモ</span></p>
+          <p className="text-xs text-gray-500 mb-2"><span className="font-medium text-gray-700">全体メモ</span></p>
           <textarea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
@@ -1180,7 +1180,7 @@ export function EventCalendar() {
 
         {/* ── メモエリア（スマホ） ── */}
         <div className="mt-2 pb-8">
-          <p className="text-xs text-gray-500 mb-2"><span className="font-medium text-gray-700">メモ</span></p>
+          <p className="text-xs text-gray-500 mb-2"><span className="font-medium text-gray-700">全体メモ</span></p>
           <textarea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
@@ -1545,7 +1545,7 @@ function DayCell({
       {!isPost && <div className="h-14 shrink-0" />}
 
       {/* スロット */}
-      <div className="flex flex-col gap-0.5 w-full">
+      <div className="flex-1 flex flex-col gap-0.5 w-full">
           {/* おこうスロット */}
           <div className="flex gap-0.5">
             <ItemSlot
@@ -1622,16 +1622,17 @@ function DayCell({
             )}
           </div>
 
-          {/* 日付メモ（下端固定） */}
-          <textarea
-            value={dayMemo}
-            onChange={(e) => onDayMemoChange(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            placeholder="メモ..."
-            rows={2}
-            className="mt-auto w-full rounded border border-gray-100 bg-transparent px-1 py-0.5 text-[10px] text-gray-600 placeholder-gray-300 resize-none focus:outline-none focus:border-gray-300 leading-relaxed"
-          />
       </div>
+
+      {/* 日付メモ（スロットコンテナ外・セル下端に密着） */}
+      <textarea
+        value={dayMemo}
+        onChange={(e) => onDayMemoChange(e.target.value)}
+        onClick={(e) => e.stopPropagation()}
+        placeholder="メモ..."
+        rows={2}
+        className="mt-1 w-full rounded border border-gray-100 bg-transparent px-1 py-0.5 text-[10px] text-gray-600 placeholder-gray-300 resize-none focus:outline-none focus:border-gray-300 leading-relaxed"
+      />
     </div>
   )
 }

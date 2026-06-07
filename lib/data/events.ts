@@ -109,8 +109,8 @@ export function buildEventDays(event: PokeSleepEvent): DayInfo[] {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  // 14日間のイベント本体 + 3日（月〜水・おこう設置可） + 1日（木・持ち越しのみ） = 18日
-  for (let i = 0; i < 18; i++) {
+  // 14日間のイベント本体 + 2日（月〜火・おこう設置可） + 1日（水・持ち越しのみ） = 17日
+  for (let i = 0; i < 17; i++) {
     const d = new Date(event.startDate)
     d.setDate(d.getDate() + i)
     d.setHours(0, 0, 0, 0)
@@ -121,8 +121,8 @@ export function buildEventDays(event: PokeSleepEvent): DayInfo[] {
     const isFriday = d.getDay() === 5
     const isEarlyWeek = d.getDay() >= 1 && d.getDay() <= 3
     const isLate = i >= 7
-    const isPostEvent = i >= 14 && i <= 16   // 15〜17日目（月〜水）
-    const isCarryoverDay = i === 17           // 18日目（木）
+    const isPostEvent = i >= 14 && i <= 15   // 15〜16日目（月〜火）
+    const isCarryoverDay = i === 16           // 17日目（水）
 
     days.push({
       date: d.getDate(),
