@@ -236,12 +236,20 @@ export function EventCalendar() {
   }, [currentEvent.id])
 
   const [memo, setMemo] = useState("")
+  const [dayMemos, setDayMemos] = useState<Record<number, string>>(
+    () => Object.fromEntries(eventDays.map(d => [d.dayIndex, ""]))
+  )
 
   // mount後にメモ復元
   useEffect(() => {
     try {
       const m = localStorage.getItem(lsKey(currentEvent.id, "memo"))
       setMemo(m ?? "")
+    } catch {}
+    try {
+      const dm = localStorage.getItem(lsKey(currentEvent.id, "dayMemos"))
+      const empty = Object.fromEntries(eventDays.map(d => [d.dayIndex, ""]))
+      setDayMemos(dm ? { ...empty, ...JSON.parse(dm) } : empty)
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentEvent.id])
@@ -256,6 +264,9 @@ export function EventCalendar() {
   useEffect(() => {
     localStorage.setItem(lsKey(currentEvent.id, "memo"), memo)
   }, [memo, currentEvent.id])
+  useEffect(() => {
+    localStorage.setItem(lsKey(currentEvent.id, "dayMemos"), JSON.stringify(dayMemos))
+  }, [dayMemos, currentEvent.id])
 
   // ── 交換所: 各エントリの交換済み回数 (key: `weekIdx-entryIdx`) ──
   const [shopCounts, setShopCounts] = useState<Record<string, number>>({})
@@ -623,6 +634,7 @@ export function EventCalendar() {
 
   const week1 = eventDays.slice(0, 7)
   const week2 = eventDays.slice(7, 14)
+  const week3 = eventDays.slice(14, 18)  // イベント後: 月〜水(おこう設置可) + 木(持ち越しのみ)
 
   return (
     <>
@@ -947,6 +959,8 @@ export function EventCalendar() {
                 mainSableId={currentEvent.umouPrices.mainSableId}
                 sableIncenseSet={sableIncenseSet}
                 sableIncenseIds={currentEvent.sableIncenseIds ?? []}
+                dayMemo={dayMemos[day.dayIndex] ?? ""}
+                onDayMemoChange={(v) => setDayMemos(prev => ({ ...prev, [day.dayIndex]: v }))}
               />
             ))}
           </div>
@@ -998,10 +1012,62 @@ export function EventCalendar() {
                 mainSableId={currentEvent.umouPrices.mainSableId}
                 sableIncenseSet={sableIncenseSet}
                 sableIncenseIds={currentEvent.sableIncenseIds ?? []}
+                dayMemo={dayMemos[day.dayIndex] ?? ""}
+                onDayMemoChange={(v) => setDayMemos(prev => ({ ...prev, [day.dayIndex]: v }))}
               />
             ))}
           </div>
           <EventBarsOverlay week={1} calendarEvents={currentEvent.calendarEvents} activeTooltipId={activeTooltip?.id ?? null} onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })} />
+        </div>
+
+        {/* Week 3（イベント後: 月〜木） */}
+        <div className="grid gap-1 mt-1 items-stretch" style={{ gridTemplateColumns: "repeat(7, 9rem)" }}>
+          {week3.map(day => (
+            <DayCell
+              key={day.date}
+              day={day}
+              slots={daySlots[day.dayIndex]}
+              isDragOver={dragOverDay === day.dayIndex}
+              dragId={dragId}
+              tapSelectedId={tapSelectedId}
+              onDragOver={(e) => { e.preventDefault(); setDragOverDay(day.dayIndex) }}
+              onDragLeave={() => setDragOverDay(null)}
+              onDropSlot={(slot) => onDropSlot(day.dayIndex, slot)}
+              onTapSlot={(slot) => onTapSlot(day.dayIndex, slot)}
+              onTapFromSlot={(slot, itemId) => onTapFromSlot(day.dayIndex, slot, itemId)}
+              onClearSlot={(slot) => clearSlot(day.dayIndex, slot)}
+              onDragFromSlot={(slot, itemId, e) => {
+                setDragId(itemId)
+                setDragSource({ dayIndex: day.dayIndex, slot })
+                e.dataTransfer.setDragImage(e.target as Element, 20, 20)
+              }}
+              onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
+              sableMax={(() => {
+                const sid = currentEvent.umouPrices.mainSableId
+                const s = daySlots[day.dayIndex]
+                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+                return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
+              })()}
+              onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
+              sableMax2={(() => {
+                const sid = currentEvent.umouPrices.mainSableId
+                const s = daySlots[day.dayIndex]
+                const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
+                return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
+              })()}
+              todayDayIndex={todayDayIndex}
+              onToggleSplitSleep={() => setDaySlots(prev => ({
+                ...prev,
+                [day.dayIndex]: { ...prev[day.dayIndex], splitSleep: !prev[day.dayIndex].splitSleep, slot3: null, slot4: null }
+              }))}
+              mainIncenseId={currentEvent.mainIncenseId}
+              mainSableId={currentEvent.umouPrices.mainSableId}
+              sableIncenseSet={sableIncenseSet}
+              sableIncenseIds={currentEvent.sableIncenseIds ?? []}
+              dayMemo={dayMemos[day.dayIndex] ?? ""}
+              onDayMemoChange={(v) => setDayMemos(prev => ({ ...prev, [day.dayIndex]: v }))}
+            />
+          ))}
         </div>
 
         {/* ── メモエリア（デスクトップ） ── */}
@@ -1103,6 +1169,8 @@ export function EventCalendar() {
                   mainSableId={currentEvent.umouPrices.mainSableId}
                   sableIncenseSet={sableIncenseSet}
                   sableIncenseIds={currentEvent.sableIncenseIds ?? []}
+                  dayMemo={dayMemos[day.dayIndex] ?? ""}
+                  onDayMemoChange={(v) => setDayMemos(prev => ({ ...prev, [day.dayIndex]: v }))}
                 />
               ))}
             </div>
@@ -1253,6 +1321,8 @@ interface DayCellProps {
   mainSableId: string
   sableIncenseSet: Set<string>
   sableIncenseIds: string[]
+  dayMemo: string
+  onDayMemoChange: (value: string) => void
 }
 
 /** 汎用アイテムスロット */
@@ -1363,20 +1433,82 @@ function DayCell({
   onDragOver, onDragLeave,
   onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onSableCountChange, sableMax, onSableCountChange2, sableMax2, todayDayIndex, onToggleSplitSleep,
   mainIncenseId, mainSableId, sableIncenseSet, sableIncenseIds,
+  dayMemo, onDayMemoChange,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
-  // ドラッグ中のアイテムがこのスロットに入れるかどうか
+  const isPost = day.isPostEvent || day.isCarryoverDay
   const dragIsIncense = dragId ? isIncenseItem(dragId) : false
+
+  // 持ち越し専用日（木）: 持ち越しスロットとメモのみ表示
+  if (day.isCarryoverDay) {
+    return (
+      <div
+        className={cn(
+          "relative flex flex-col h-full rounded-lg border p-1 transition-all duration-150",
+          day.dayIndex === todayDayIndex ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-gray-50/60",
+          isDragOver && "border-blue-400 bg-blue-50 scale-[1.02]",
+        )}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+      >
+        <div className="flex items-center mb-1">
+          <span className="text-sm font-bold text-gray-400">{day.date}</span>
+          <span className="ml-1 text-[9px] text-gray-300">({day.dayOfWeek})</span>
+        </div>
+        <div className="flex gap-0.5 mb-1">
+          {sableIncenseSet.size > 1 && (
+            <ItemSlot
+              itemId={slots.carryoverSlot2}
+              isOver={isDragOver && sableIncenseSet.has(dragId!) && dragId !== mainIncenseId && !slots.carryoverSlot2}
+              isTapTarget={!!tapSelectedId && sableIncenseSet.has(tapSelectedId) && tapSelectedId !== mainIncenseId && !slots.carryoverSlot2}
+              isTapSelected={tapSelectedId === slots.carryoverSlot2 && !!slots.carryoverSlot2}
+              hasTapSelected={!!tapSelectedId}
+              label={"持越し"}
+              bgImageUrls={sableIncenseIds.map((id: string) => getIncenseById(id)?.imageUrl ?? "").filter(Boolean)}
+              onDrop={() => onDropSlot("carryoverSlot2")}
+              onTap={() => onTapSlot("carryoverSlot2")}
+              onTapItem={slots.carryoverSlot2 ? () => onTapFromSlot("carryoverSlot2", slots.carryoverSlot2!) : undefined}
+              onClear={() => onClearSlot("carryoverSlot2")}
+              onDragFromSlot={slots.carryoverSlot2 ? (e) => onDragFromSlot("carryoverSlot2", slots.carryoverSlot2!, e) : undefined}
+            />
+          )}
+          <ItemSlot
+            itemId={slots.carryoverSlot}
+            isOver={isDragOver && dragId === mainIncenseId && !slots.carryoverSlot}
+            isTapTarget={tapSelectedId === mainIncenseId && !slots.carryoverSlot}
+            isTapSelected={tapSelectedId === slots.carryoverSlot && !!slots.carryoverSlot}
+            hasTapSelected={!!tapSelectedId}
+            label={"持越し"}
+            bgImageUrls={[getIncenseById(mainIncenseId)?.imageUrl ?? ""]}
+            onDrop={() => onDropSlot("carryoverSlot")}
+            onTap={() => onTapSlot("carryoverSlot")}
+            onTapItem={slots.carryoverSlot ? () => onTapFromSlot("carryoverSlot", slots.carryoverSlot!) : undefined}
+            onClear={() => onClearSlot("carryoverSlot")}
+            onDragFromSlot={slots.carryoverSlot ? (e) => onDragFromSlot("carryoverSlot", slots.carryoverSlot!, e) : undefined}
+          />
+        </div>
+        <textarea
+          value={dayMemo}
+          onChange={(e) => onDayMemoChange(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          placeholder="メモ..."
+          rows={2}
+          className="mt-auto w-full rounded border border-gray-100 bg-transparent px-1 py-0.5 text-[10px] text-gray-500 placeholder-gray-300 resize-none focus:outline-none focus:border-gray-300 leading-relaxed"
+        />
+      </div>
+    )
+  }
 
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-lg border p-1 transition-all duration-150",
+        "relative flex flex-col h-full rounded-lg border p-1 transition-all duration-150",
         day.dayIndex === todayDayIndex && "border-blue-500 bg-blue-50",
-        day.dayIndex !== todayDayIndex && isSat && "border-sky-300 bg-sky-50",
-        day.dayIndex !== todayDayIndex && isSun && "border-rose-300 bg-rose-50",
-        day.dayIndex !== todayDayIndex && !isSat && !isSun && "border-gray-200 bg-white",
+        day.dayIndex !== todayDayIndex && isPost && "border-gray-200 bg-gray-100/70",
+        day.dayIndex !== todayDayIndex && !isPost && isSat && "border-sky-300 bg-sky-50",
+        day.dayIndex !== todayDayIndex && !isPost && isSun && "border-rose-300 bg-rose-50",
+        day.dayIndex !== todayDayIndex && !isPost && !isSat && !isSun && "border-gray-200 bg-white",
         isDragOver && "border-blue-400 bg-blue-50 scale-[1.02]",
       )}
       onDragOver={onDragOver}
@@ -1385,7 +1517,7 @@ function DayCell({
       {/* 日付 */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-1">
-          <span className={cn("text-sm font-bold", isSun && "text-rose-500", isSat && "text-sky-600", !isSat && !isSun && "text-gray-700")}>
+          <span className={cn("text-sm font-bold", isSun && !isPost && "text-rose-500", isSat && !isPost && "text-sky-600", (!isSat && !isSun || isPost) && "text-gray-400")}>
             {day.date}
           </span>
           <button
@@ -1409,8 +1541,8 @@ function DayCell({
         {/* {cumulativeUmou > 0 && <span className="text-[8px] text-purple-600 font-semibold">累計🪶: {cumulativeUmou}</span>} */}
       </div>
 
-      {/* イベントバー用の予約スペース（EventBarsOverlay がここに重なる） */}
-      <div className="h-14 shrink-0" />
+      {/* イベントバー用の予約スペース（EventBarsOverlay がここに重なる・イベント後は不要） */}
+      {!isPost && <div className="h-14 shrink-0" />}
 
       {/* スロット */}
       <div className="flex flex-col gap-0.5 w-full">
@@ -1490,42 +1622,15 @@ function DayCell({
             )}
           </div>
 
-          {/* 持ち越しスロット（最終日のみ・右寄せ） */}
-          {day.dayIndex === 13 && (
-            <div className="flex gap-0.5 ml-auto w-fit">
-              {/* sableIncenseSet のおこうがある場合のみ2つ目の持ち越しスロットを表示 */}
-              {sableIncenseSet.size > 1 && (
-                <ItemSlot
-                  itemId={slots.carryoverSlot2}
-                  isOver={isDragOver && sableIncenseSet.has(dragId!) && dragId !== mainIncenseId && !slots.carryoverSlot2}
-                  isTapTarget={!!tapSelectedId && sableIncenseSet.has(tapSelectedId) && tapSelectedId !== mainIncenseId && !slots.carryoverSlot2}
-                  isTapSelected={tapSelectedId === slots.carryoverSlot2 && !!slots.carryoverSlot2}
-                  hasTapSelected={!!tapSelectedId}
-                  label={"持越し"}
-                  bgImageUrls={sableIncenseIds.map((id: string) => getIncenseById(id)?.imageUrl ?? "").filter(Boolean)}
-                  onDrop={() => onDropSlot("carryoverSlot2")}
-                  onTap={() => onTapSlot("carryoverSlot2")}
-                  onTapItem={slots.carryoverSlot2 ? () => onTapFromSlot("carryoverSlot2", slots.carryoverSlot2!) : undefined}
-                  onClear={() => onClearSlot("carryoverSlot2")}
-                  onDragFromSlot={slots.carryoverSlot2 ? (e) => onDragFromSlot("carryoverSlot2", slots.carryoverSlot2!, e) : undefined}
-                />
-              )}
-              <ItemSlot
-                itemId={slots.carryoverSlot}
-                isOver={isDragOver && dragId === mainIncenseId && !slots.carryoverSlot}
-                isTapTarget={tapSelectedId === mainIncenseId && !slots.carryoverSlot}
-                isTapSelected={tapSelectedId === slots.carryoverSlot && !!slots.carryoverSlot}
-                hasTapSelected={!!tapSelectedId}
-                label={"持越し"}
-                bgImageUrls={[getIncenseById(mainIncenseId)?.imageUrl ?? ""]}
-                onDrop={() => onDropSlot("carryoverSlot")}
-                onTap={() => onTapSlot("carryoverSlot")}
-                onTapItem={slots.carryoverSlot ? () => onTapFromSlot("carryoverSlot", slots.carryoverSlot!) : undefined}
-                onClear={() => onClearSlot("carryoverSlot")}
-                onDragFromSlot={slots.carryoverSlot ? (e) => onDragFromSlot("carryoverSlot", slots.carryoverSlot!, e) : undefined}
-              />
-            </div>
-          )}
+          {/* 日付メモ（下端固定） */}
+          <textarea
+            value={dayMemo}
+            onChange={(e) => onDayMemoChange(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            placeholder="メモ..."
+            rows={2}
+            className="mt-auto w-full rounded border border-gray-100 bg-transparent px-1 py-0.5 text-[10px] text-gray-600 placeholder-gray-300 resize-none focus:outline-none focus:border-gray-300 leading-relaxed"
+          />
       </div>
     </div>
   )
@@ -1608,6 +1713,8 @@ interface DayRowProps {
   mainSableId: string
   sableIncenseSet: Set<string>
   sableIncenseIds: string[]
+  dayMemo: string
+  onDayMemoChange: (value: string) => void
 }
 
 function DayRow({
@@ -1617,6 +1724,7 @@ function DayRow({
   onSableCountChange, sableMax, onSableCountChange2, sableMax2,
   todayDayIndex, onToggleSplitSleep,
   mainIncenseId, mainSableId, sableIncenseSet, sableIncenseIds,
+  dayMemo, onDayMemoChange,
 }: DayRowProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -1781,9 +1889,18 @@ function DayRow({
           )}
         </div>
 
-        {/* 持ち越しスロット（最終日のみ・右寄せ） */}
+      </div>
+
+      {/* 日付メモ（持ち越しスロットの後・常に最下部） */}
+      <div className={cn(
+        "px-3 pb-2",
+        isToday   && "bg-blue-50/40",
+        !isToday && isSat  && "bg-sky-50/40",
+        !isToday && isSun  && "bg-rose-50/40",
+        !isToday && !isSat && !isSun && "bg-white",
+      )}>
         {day.dayIndex === 13 && (
-          <div className="flex gap-0.5 ml-auto w-fit">
+          <div className="flex gap-0.5 mb-1" style={{ transform: "scale(0.75)", transformOrigin: "left top" }}>
             {sableIncenseSet.size > 1 && (
               <ItemSlot
                 itemId={slots.carryoverSlot2}
@@ -1814,6 +1931,14 @@ function DayRow({
             />
           </div>
         )}
+        <textarea
+          value={dayMemo}
+          onChange={(e) => onDayMemoChange(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          placeholder="メモ..."
+          rows={2}
+          className="w-full rounded border border-gray-100 bg-transparent px-1 py-0.5 text-[10px] text-gray-600 placeholder-gray-300 resize-none focus:outline-none focus:border-gray-300 leading-relaxed"
+        />
       </div>
     </div>
   )
