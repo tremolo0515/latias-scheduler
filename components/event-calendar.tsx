@@ -1199,10 +1199,10 @@ export function EventCalendar() {
     {/* ── 全体表示フロートボタン（スマホのみ） ── */}
     <button
       onClick={() => setShowOverview(true)}
-      className="md:hidden fixed bottom-6 right-4 z-40 w-10 h-10 rounded-full bg-white/90 border border-gray-200 text-gray-500 shadow-md flex items-center justify-center active:scale-95 transition-transform"
+      className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-white/90 border border-gray-200 text-gray-500 shadow-md flex items-center justify-center active:scale-95 transition-transform"
       aria-label="全体表示"
     >
-      <CalendarDays className="w-5 h-5" />
+      <CalendarDays className="w-6 h-6" />
     </button>
 
     {/* ── 全体表示モーダル（portal） ── */}
