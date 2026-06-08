@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Fragment } from "react"
 import { createPortal } from "react-dom"
-import { X, ChevronLeft, ChevronRight } from "lucide-react"
+import { X, ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { INCENSE_MASTERS, getIncenseById, type IncenseMaster } from "@/lib/data/items"
 import { EVENTS, buildEventDays, type PokeSleepEvent, type ExchangeShopEntry } from "@/lib/data/events"
@@ -307,6 +307,8 @@ export function EventCalendar() {
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragSource, setDragSource] = useState<{ dayIndex: number; slot: keyof DaySlots } | null>(null)
   const [dragOverDay, setDragOverDay] = useState<number | null>(null)
+
+  const [showOverview, setShowOverview] = useState(false)
 
   const [activeTooltip, setActiveTooltip] = useState<{ id: string; x: number; y: number } | null>(null)
   const [tapSelectedId, setTapSelectedId] = useState<string | null>(null)
@@ -1194,6 +1196,43 @@ export function EventCalendar() {
       </div>
     </div>
 
+    {/* ── 全体表示フロートボタン（スマホのみ） ── */}
+    <button
+      onClick={() => setShowOverview(true)}
+      className="md:hidden fixed bottom-6 right-4 z-40 w-10 h-10 rounded-full bg-white/90 border border-gray-200 text-gray-500 shadow-md flex items-center justify-center active:scale-95 transition-transform"
+      aria-label="全体表示"
+    >
+      <CalendarDays className="w-5 h-5" />
+    </button>
+
+    {/* ── 全体表示モーダル（portal） ── */}
+    {showOverview && typeof document !== "undefined" && createPortal(
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 md:hidden"
+        onClick={() => setShowOverview(false)}
+      >
+        <div
+          className="relative bg-white rounded-2xl shadow-2xl mx-3 w-full max-w-sm p-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* モーダルヘッダー */}
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-bold text-gray-700">{currentEvent.name}</span>
+            <button onClick={() => setShowOverview(false)} className="text-gray-400 hover:text-gray-700">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {/* カレンダー概要 */}
+          <CalendarOverview
+            eventDays={eventDays}
+            daySlots={daySlots}
+            todayDayIndex={todayDayIndex}
+          />
+        </div>
+      </div>,
+      document.body
+    )}
+
     {/* ── イベントツールチップ（portal） ── */}
     {activeTooltip && typeof document !== "undefined" && createPortal(
       <div
@@ -1944,6 +1983,102 @@ function DayRow({
           className="w-full rounded border border-gray-100 bg-transparent px-1 py-0.5 text-[10px] text-gray-600 placeholder-gray-300 resize-none focus:outline-none focus:border-gray-300 leading-relaxed"
         />
       </div>
+    </div>
+  )
+}
+
+// ─── CalendarOverview（全体表示モーダル用） ───────────────────
+
+function CalendarOverview({
+  eventDays,
+  daySlots,
+  todayDayIndex,
+}: {
+  eventDays: DayInfo[]
+  daySlots: Record<number, DaySlots>
+  todayDayIndex: number
+}) {
+  const weeks = [
+    eventDays.slice(0, 7),
+    eventDays.slice(7, 14),
+    eventDays.slice(14),
+  ]
+  const dowLabels = ["月", "火", "水", "木", "金", "土", "日"]
+
+  return (
+    <div className="select-none">
+      {/* 曜日ヘッダー */}
+      <div className="grid grid-cols-7 mb-1">
+        {dowLabels.map((d, i) => (
+          <div key={d} className={cn(
+            "text-center text-[9px] font-bold py-0.5",
+            i === 5 && "text-sky-500",
+            i === 6 && "text-rose-400",
+            i < 5 && "text-gray-400",
+          )}>{d}</div>
+        ))}
+      </div>
+
+      {/* 週ごとのグリッド */}
+      {weeks.map((week, wi) => (
+        <div key={wi} className="grid grid-cols-7 gap-0.5 mb-0.5">
+          {week.map(day => {
+            const slots = daySlots[day.dayIndex]
+            const isToday = day.dayIndex === todayDayIndex
+            const isPost = day.isPostEvent || day.isCarryoverDay
+            const isSat = day.dayOfWeek === "土"
+            const isSun = day.dayOfWeek === "日"
+
+            // 表示順: [slot1, slot2, sableSlot], [slot3, slot4, sableSlot2] の2行×3列
+            const slotGrid: (string | null)[] = [
+              slots.slot1 ?? null,
+              slots.slot2 ?? null,
+              slots.sableSlot ?? null,
+              slots.splitSleep ? (slots.slot3 ?? null) : null,
+              slots.splitSleep ? (slots.slot4 ?? null) : null,
+              slots.splitSleep ? (slots.sableSlot2 ?? null) : null,
+            ]
+            const hasAny = slotGrid.some(Boolean)
+
+            return (
+              <div
+                key={day.dayIndex}
+                className={cn(
+                  "rounded border p-0.5 flex flex-col items-center gap-0.5",
+                  isToday && "border-blue-400 bg-blue-50",
+                  !isToday && isPost && "border-gray-100 bg-gray-50",
+                  !isToday && !isPost && isSat && "border-sky-200 bg-sky-50",
+                  !isToday && !isPost && isSun && "border-rose-200 bg-rose-50",
+                  !isToday && !isPost && !isSat && !isSun && "border-gray-200 bg-white",
+                )}
+              >
+                <span className={cn(
+                  "text-[8px] font-bold leading-none",
+                  isToday && "text-blue-600",
+                  !isToday && isPost && "text-gray-300",
+                  !isToday && !isPost && isSat && "text-sky-500",
+                  !isToday && !isPost && isSun && "text-rose-400",
+                  !isToday && !isPost && !isSat && !isSun && "text-gray-500",
+                )}>{day.date}</span>
+                <div className="grid grid-cols-3 gap-px">
+                  {hasAny ? slotGrid.map((id, i) => {
+                    const item = id ? getIncenseById(id) : null
+                    return item ? (
+                      <img key={i} src={item.imageUrl} alt={item.name} className="w-4 h-4 object-contain" />
+                    ) : (
+                      <div key={i} className="w-4 h-4" />
+                    )
+                  }) : (
+                    <div className="col-span-3 flex justify-center">
+                      <div className="w-3 h-3 rounded-full bg-gray-100" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }
