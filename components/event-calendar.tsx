@@ -1088,9 +1088,10 @@ export function EventCalendar() {
         {[
           { label: "第1週", days: week1, weekIdx: 0 },
           { label: "第2週", days: week2, weekIdx: 1 },
+          { label: "イベント後", days: week3, weekIdx: -1 },
         ].map(({ label, days, weekIdx }) => {
-          // この週に表示するイベントバー
-          const weekBars = currentEvent.calendarEvents.filter(ev => ev.week === weekIdx)
+          // この週に表示するイベントバー（イベント後は表示しない）
+          const weekBars = weekIdx >= 0 ? currentEvent.calendarEvents.filter(ev => ev.week === weekIdx) : []
           return (
           <section key={label} className="mb-3">
             {/* 週ラベル + イベントバッジ */}
@@ -1730,6 +1731,7 @@ function DayRow({
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
   const isToday = day.dayIndex === todayDayIndex
+  const isPost = day.isPostEvent || day.isCarryoverDay
   const dragIsIncense = dragId ? isIncenseItem(dragId) : false
 
   return (
@@ -1737,9 +1739,10 @@ function DayRow({
       className={cn(
         "rounded-xl border transition-all duration-150 overflow-hidden",
         isToday   && "border-blue-500 shadow-sm shadow-blue-200",
-        !isToday && isSat  && "border-sky-200",
-        !isToday && isSun  && "border-rose-200",
-        !isToday && !isSat && !isSun && "border-gray-200",
+        !isToday && isPost && "border-gray-200 bg-gray-100/70",
+        !isToday && !isPost && isSat  && "border-sky-200",
+        !isToday && !isPost && isSun  && "border-rose-200",
+        !isToday && !isPost && !isSat && !isSun && "border-gray-200",
         isDragOver && "border-blue-400 shadow-sm shadow-blue-200",
       )}
       onDragOver={onDragOver}
@@ -1749,9 +1752,10 @@ function DayRow({
       <div className={cn(
         "flex items-center gap-2 px-3 py-2",
         isToday   && "bg-blue-50",
-        !isToday && isSat  && "bg-sky-50",
-        !isToday && isSun  && "bg-rose-50",
-        !isToday && !isSat && !isSun && "bg-white",
+        !isToday && isPost && "bg-gray-100/70",
+        !isToday && !isPost && isSat  && "bg-sky-50",
+        !isToday && !isPost && isSun  && "bg-rose-50",
+        !isToday && !isPost && !isSat && !isSun && "bg-white",
         isDragOver && "bg-blue-50",
       )}>
         {/* 日付 */}
@@ -1759,9 +1763,10 @@ function DayRow({
           <span className={cn(
             "text-sm font-bold tabular-nums",
             isToday  && "text-blue-600",
-            !isToday && isSun && "text-rose-500",
-            !isToday && isSat && "text-sky-600",
-            !isToday && !isSat && !isSun && "text-gray-800",
+            !isToday && isPost && "text-gray-400",
+            !isToday && !isPost && isSun && "text-rose-500",
+            !isToday && !isPost && isSat && "text-sky-600",
+            !isToday && !isPost && !isSat && !isSun && "text-gray-800",
           )}>
             {day.date}
           </span>
@@ -1799,9 +1804,10 @@ function DayRow({
         </div>
       </div>
 
-      {/* ── スロット行 ── */}
+      {/* ── スロット行（持ち越し専用日は非表示） ── */}
       <div className={cn(
         "flex flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2",
+        day.isCarryoverDay && "hidden",
         isToday   && "bg-blue-50/40",
         !isToday && isSat  && "bg-sky-50/40",
         !isToday && isSun  && "bg-rose-50/40",
@@ -1900,7 +1906,7 @@ function DayRow({
         !isToday && isSun  && "bg-rose-50/40",
         !isToday && !isSat && !isSun && "bg-white",
       )}>
-        {day.dayIndex === 13 && (
+        {day.dayIndex === 16 && (
           <div className="flex gap-0.5 mb-1" style={{ transform: "scale(0.75)", transformOrigin: "left top" }}>
             {sableIncenseSet.size > 1 && (
               <ItemSlot
