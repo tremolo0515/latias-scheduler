@@ -1776,9 +1776,6 @@ function DayRow({
             isSat && "text-sky-500",
             !isSat && !isSun && "text-gray-400",
           )}>({day.dayOfWeek})</span>
-          {isToday && (
-            <span className="text-[9px] font-bold text-white bg-blue-500 rounded px-1 py-px leading-none">今日</span>
-          )}
         </div>
 
         {/* 右側: 分割睡眠トグル */}
