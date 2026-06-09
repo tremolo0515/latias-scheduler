@@ -235,6 +235,22 @@ export function EventCalendar() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentEvent.id])
 
+  // 持込アイテム（運営配布等）: inventory と完全独立
+  const [carryIn, setCarryIn] = useState<Record<string, number>>(() =>
+    Object.fromEntries((currentEvent.carryInItems ?? []).map(ci => [ci.itemId, 0]))
+  )
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(lsKey(currentEvent.id, "carryIn"))
+      const empty = Object.fromEntries((currentEvent.carryInItems ?? []).map(ci => [ci.itemId, 0]))
+      setCarryIn(saved ? { ...empty, ...JSON.parse(saved) } : empty)
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEvent.id])
+  useEffect(() => {
+    localStorage.setItem(lsKey(currentEvent.id, "carryIn"), JSON.stringify(carryIn))
+  }, [carryIn, currentEvent.id])
+
   const [memo, setMemo] = useState("")
   const [dayMemos, setDayMemos] = useState<Record<number, string>>(
     () => Object.fromEntries(eventDays.map(d => [d.dayIndex, ""]))
@@ -375,6 +391,11 @@ export function EventCalendar() {
     }, 0)
   }
 
+  // inventory + carryIn の合計在庫数
+  function totalStock(id: string): number {
+    return (inventory[id] ?? 0) + (carryIn[id] ?? 0)
+  }
+
   // 提案（ボタンは一時的に非表示 — 復活させる際はここのコメントを外してボタンJSXを戻す）
   // function handleSuggest() {
   //   setDaySlots(generatePlan(inventory, eventDays, currentEvent))
@@ -423,7 +444,7 @@ export function EventCalendar() {
 
     // 在庫チェック（スロットからの移動は使用数-1で判定）
     const effectiveUsed = dragSource ? usedCount(dragId) - 1 : usedCount(dragId)
-    if (effectiveUsed >= (inventory[dragId] ?? 0)) return
+    if (effectiveUsed >= totalStock(dragId)) return
 
     setDaySlots(prev => {
       let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: dragId } }
@@ -524,7 +545,7 @@ export function EventCalendar() {
     if (slot === "carryoverSlot2" && dayIndex !== 16) return
 
     const effectiveUsed = tapSource ? usedCount(id) - 1 : usedCount(id)
-    if (effectiveUsed >= (inventory[id] ?? 0)) return
+    if (effectiveUsed >= totalStock(id)) return
 
     setDaySlots(prev => {
       let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: id } }
@@ -613,7 +634,7 @@ export function EventCalendar() {
         .filter(([di]) => Number(di) !== dayIndex)
         .reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
       const selfOther = s.sableSlot2 === sid ? s.sableCount2 : 0
-      const max = (inventory[sid] ?? 0) - otherUsed - selfOther
+      const max = totalStock(sid) - otherUsed - selfOther
       const newCount = Math.max(1, Math.min(max, value))
       return { ...prev, [dayIndex]: { ...s, sableCount: newCount } }
     })
@@ -628,7 +649,7 @@ export function EventCalendar() {
         .filter(([di]) => Number(di) !== dayIndex)
         .reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
       const selfOther = s.sableSlot === sid ? s.sableCount : 0
-      const max = (inventory[sid] ?? 0) - otherUsed - selfOther
+      const max = totalStock(sid) - otherUsed - selfOther
       const newCount = Math.max(1, Math.min(max, value))
       return { ...prev, [dayIndex]: { ...s, sableCount2: newCount } }
     })
@@ -801,15 +822,15 @@ export function EventCalendar() {
                 </div>
                 {/* 持込アイテム（うもう合計に影響しない） */}
                 {carryInItems.map(({ item, max }) => {
-                  const qty = inventory[item.id] ?? 0
+                  const qty = carryIn[item.id] ?? 0
                   return (
                     <div key={`carryin-${item.id}`} className="flex items-center gap-1 py-0.5">
                       <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain shrink-0" />
-                      <span className="text-[13px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}<span className="text-[10px] text-gray-400 ml-0.5">（持込）</span></span>
-                      <button onClick={() => setInventory(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
+                      <span className="text-[13px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}<span className="text-[10px] text-gray-400 ml-0.5">（配布）</span></span>
+                      <button onClick={() => setCarryIn(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
                         className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none shrink-0">－</button>
                       <span className="text-[13px] font-bold text-gray-800 w-5 text-center shrink-0">{qty}</span>
-                      <button onClick={() => { setInventory(prev => ({ ...prev, [item.id]: Math.min(max, qty + 1) })); flashItem(item.id) }}
+                      <button onClick={() => { setCarryIn(prev => ({ ...prev, [item.id]: Math.min(max, qty + 1) })); flashItem(item.id) }}
                         className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none shrink-0">＋</button>
                     </div>
                   )
@@ -860,7 +881,7 @@ export function EventCalendar() {
         </div>
         <div className="flex flex-wrap gap-2">
           {eventItems.map(incense => {
-            const qty = inventory[incense.id] ?? 0
+            const qty = totalStock(incense.id)
             const used = usedCount(incense.id)
             const remaining = qty - used
             const isOverflow = used > qty
@@ -943,14 +964,14 @@ export function EventCalendar() {
                   const sid = currentEvent.umouPrices.mainSableId
                   const s = daySlots[day.dayIndex]
                   const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
-                  return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
+                  return Math.max(1, totalStock(sid) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
                 })()}
                 onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
                 sableMax2={(() => {
                   const sid = currentEvent.umouPrices.mainSableId
                   const s = daySlots[day.dayIndex]
                   const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
-                  return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
+                  return Math.max(1, totalStock(sid) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
                 })()}
                 todayDayIndex={todayDayIndex}
                 onToggleSplitSleep={() => setDaySlots(prev => ({
@@ -996,14 +1017,14 @@ export function EventCalendar() {
                   const sid = currentEvent.umouPrices.mainSableId
                   const s = daySlots[day.dayIndex]
                   const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
-                  return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
+                  return Math.max(1, totalStock(sid) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
                 })()}
                 onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
                 sableMax2={(() => {
                   const sid = currentEvent.umouPrices.mainSableId
                   const s = daySlots[day.dayIndex]
                   const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
-                  return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
+                  return Math.max(1, totalStock(sid) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
                 })()}
                 todayDayIndex={todayDayIndex}
                 onToggleSplitSleep={() => setDaySlots(prev => ({
@@ -1048,14 +1069,14 @@ export function EventCalendar() {
                 const sid = currentEvent.umouPrices.mainSableId
                 const s = daySlots[day.dayIndex]
                 const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
-                return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
+                return Math.max(1, totalStock(sid) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
               })()}
               onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
               sableMax2={(() => {
                 const sid = currentEvent.umouPrices.mainSableId
                 const s = daySlots[day.dayIndex]
                 const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
-                return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
+                return Math.max(1, totalStock(sid) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
               })()}
               todayDayIndex={todayDayIndex}
               onToggleSplitSleep={() => setDaySlots(prev => ({
@@ -1154,14 +1175,14 @@ export function EventCalendar() {
                     const sid = currentEvent.umouPrices.mainSableId
                     const s = daySlots[day.dayIndex]
                     const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
-                    return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
+                    return Math.max(1, totalStock(sid) - otherUsed - (s.sableSlot2 === sid ? s.sableCount2 : 0))
                   })()}
                   onSableCountChange2={(value) => changeSableCount2(day.dayIndex, value)}
                   sableMax2={(() => {
                     const sid = currentEvent.umouPrices.mainSableId
                     const s = daySlots[day.dayIndex]
                     const otherUsed = Object.entries(daySlots).filter(([di]) => Number(di) !== day.dayIndex).reduce((sum, [, ds]) => sum + (ds.sableSlot === sid ? ds.sableCount : 0) + (ds.sableSlot2 === sid ? ds.sableCount2 : 0), 0)
-                    return Math.max(1, (inventory[sid] ?? 0) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
+                    return Math.max(1, totalStock(sid) - otherUsed - (s.sableSlot === sid ? s.sableCount : 0))
                   })()}
                   todayDayIndex={todayDayIndex}
                   onToggleSplitSleep={() => setDaySlots(prev => ({
