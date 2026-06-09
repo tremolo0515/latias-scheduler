@@ -800,6 +800,7 @@ export function EventCalendar() {
               const carryInItems = (currentEvent.carryInItems ?? []).map(ci => ({
                 item: getIncenseById(ci.itemId)!,
                 max: ci.max,
+                label: ci.label ?? "持込",
               })).filter(ci => ci.item)
               const allOtherIds = [
                 ...carryInItems.map(ci => ci.item.id),
@@ -821,12 +822,12 @@ export function EventCalendar() {
                   >リセット</button>
                 </div>
                 {/* 持込アイテム（うもう合計に影響しない） */}
-                {carryInItems.map(({ item, max }) => {
+                {carryInItems.map(({ item, max, label }) => {
                   const qty = carryIn[item.id] ?? 0
                   return (
                     <div key={`carryin-${item.id}`} className="flex items-center gap-1 py-0.5">
                       <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain shrink-0" />
-                      <span className="text-[13px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}<span className="text-[10px] text-gray-400 ml-0.5">（配布）</span></span>
+                      <span className="text-[13px] text-gray-600 flex-1 leading-tight line-clamp-1 min-w-0">{item.name}<span className="text-[10px] text-gray-400 ml-0.5">（{label}）</span></span>
                       <button onClick={() => setCarryIn(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
                         className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none shrink-0">－</button>
                       <span className="text-[13px] font-bold text-gray-800 w-5 text-center shrink-0">{qty}</span>
