@@ -320,6 +320,7 @@ export const EVENTS: PokeSleepEvent[] = [
     mainIncenseId: "latios",
     sableIncenseIds: ["latias"],  // ラティアスのおこうを置いた日もサブレスロット出現
     carryInItems: [
+      { itemId: "latios-sable", max: 1 },  // 運営配布1個
       { itemId: "latias", max: 2 },  // バッグ持込1個 + お詫び配布1個
     ],
     umouShop: {
