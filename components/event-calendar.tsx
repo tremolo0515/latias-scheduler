@@ -473,29 +473,10 @@ export function EventCalendar() {
 
     setDaySlots(prev => {
       let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: dragId } }
-      // サブレおこうが全スロットから消えた場合、sableSlot を強制クリア
-      if (slot === "slot1" || slot === "slot2" || slot === "slot3" || slot === "slot4") {
-        const day = next[dayIndex]
-        if (!sableIncenseSet.has(day.slot1!) && !sableIncenseSet.has(day.slot2!) && day.sableSlot) {
-          next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot: null, sableCount: 1 } }
-        }
-        if (!sableIncenseSet.has(day.slot3!) && !sableIncenseSet.has(day.slot4!) && day.sableSlot2) {
-          next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot2: null, sableCount2: 1 } }
-        }
-      }
       // 移動元スロットをクリア
       if (dragSource) {
         const srcDay = next[dragSource.dayIndex]
-        let srcUpdate: Partial<DaySlots> = { [dragSource.slot]: null }
-        if (dragSource.slot === "slot1" || dragSource.slot === "slot2" || dragSource.slot === "slot3" || dragSource.slot === "slot4") {
-          const afterSrc = { ...srcDay, [dragSource.slot]: null }
-          if (!sableIncenseSet.has(afterSrc.slot1!) && !sableIncenseSet.has(afterSrc.slot2!) && srcDay.sableSlot) {
-            srcUpdate = { ...srcUpdate, sableSlot: null, sableCount: 1 }
-          }
-          if (!sableIncenseSet.has(afterSrc.slot3!) && !sableIncenseSet.has(afterSrc.slot4!) && srcDay.sableSlot2) {
-            srcUpdate = { ...srcUpdate, sableSlot2: null, sableCount2: 1 }
-          }
-        }
+        const srcUpdate: Partial<DaySlots> = { [dragSource.slot]: null }
         next = { ...next, [dragSource.dayIndex]: { ...srcDay, ...srcUpdate } }
       }
       return next
@@ -575,27 +556,9 @@ export function EventCalendar() {
 
     setDaySlots(prev => {
       let next = { ...prev, [dayIndex]: { ...prev[dayIndex], [slot]: id } }
-      if (slot === "slot1" || slot === "slot2" || slot === "slot3" || slot === "slot4") {
-        const day = next[dayIndex]
-        if (!sableIncenseSet.has(day.slot1!) && !sableIncenseSet.has(day.slot2!) && day.sableSlot) {
-          next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot: null, sableCount: 1 } }
-        }
-        if (!sableIncenseSet.has(day.slot3!) && !sableIncenseSet.has(day.slot4!) && day.sableSlot2) {
-          next = { ...next, [dayIndex]: { ...next[dayIndex], sableSlot2: null, sableCount2: 1 } }
-        }
-      }
       if (tapSource) {
         const srcDay = next[tapSource.dayIndex]
-        let srcUpdate: Partial<DaySlots> = { [tapSource.slot]: null }
-        if (tapSource.slot === "slot1" || tapSource.slot === "slot2" || tapSource.slot === "slot3" || tapSource.slot === "slot4") {
-          const afterSrc = { ...srcDay, [tapSource.slot]: null }
-          if (!sableIncenseSet.has(afterSrc.slot1!) && !sableIncenseSet.has(afterSrc.slot2!) && srcDay.sableSlot) {
-            srcUpdate = { ...srcUpdate, sableSlot: null, sableCount: 1 }
-          }
-          if (!sableIncenseSet.has(afterSrc.slot3!) && !sableIncenseSet.has(afterSrc.slot4!) && srcDay.sableSlot2) {
-            srcUpdate = { ...srcUpdate, sableSlot2: null, sableCount2: 1 }
-          }
-        }
+        const srcUpdate: Partial<DaySlots> = { [tapSource.slot]: null }
         next = { ...next, [tapSource.dayIndex]: { ...srcDay, ...srcUpdate } }
       }
       return next
@@ -629,28 +592,15 @@ export function EventCalendar() {
 
   function clearSlot(dayIndex: number, slot: keyof DaySlots) {
     if (lockedDays.has(dayIndex)) return
-    setDaySlots(prev => {
-      const day = prev[dayIndex]
-      // slot1/slot2 からサブレおこうを外してもう一方にもなければ sableSlot をクリア
-      const clearing1 = (slot === "slot1" && sableIncenseSet.has(day.slot1!)) || (slot === "slot2" && sableIncenseSet.has(day.slot2!))
-      const remaining1 = (slot !== "slot1" && sableIncenseSet.has(day.slot1!)) || (slot !== "slot2" && sableIncenseSet.has(day.slot2!))
-      const shouldClearSable1 = clearing1 && !remaining1
-      // slot3/slot4 からサブレおこうを外してもう一方にもなければ sableSlot2 をクリア
-      const clearing2 = (slot === "slot3" && sableIncenseSet.has(day.slot3!)) || (slot === "slot4" && sableIncenseSet.has(day.slot4!))
-      const remaining2 = (slot !== "slot3" && sableIncenseSet.has(day.slot3!)) || (slot !== "slot4" && sableIncenseSet.has(day.slot4!))
-      const shouldClearSable2 = clearing2 && !remaining2
-      return {
-        ...prev,
-        [dayIndex]: {
-          ...day,
-          [slot]: null,
-          ...(slot === "sableSlot" ? { sableCount: 1 } : {}),
-          ...(slot === "sableSlot2" ? { sableCount2: 1 } : {}),
-          ...(shouldClearSable1 ? { sableSlot: null, sableCount: 1 } : {}),
-          ...(shouldClearSable2 ? { sableSlot2: null, sableCount2: 1 } : {}),
-        },
-      }
-    })
+    setDaySlots(prev => ({
+      ...prev,
+      [dayIndex]: {
+        ...prev[dayIndex],
+        [slot]: null,
+        ...(slot === "sableSlot" ? { sableCount: 1 } : {}),
+        ...(slot === "sableSlot2" ? { sableCount2: 1 } : {}),
+      },
+    }))
   }
 
   function changeSableCount(dayIndex: number, value: number) {
@@ -1694,23 +1644,21 @@ function DayCell({
               onDragFromSlot={slots.slot2 ? (e) => onDragFromSlot("slot2", slots.slot2!, e) : undefined}
               isLocked={isLocked}
             />
-            {/* サブレスロット（sableIncenseSet のおこう配置時のみ・マスターサブレorサブレ排他） */}
-            {(sableIncenseSet.has(slots.slot1!) || sableIncenseSet.has(slots.slot2!)) && (
-              <ItemSlot
-                itemId={slots.sableSlot}
-                isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot}
-                isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot}
-                isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
-                hasTapSelected={!!tapSelectedId}
-                bgImageUrls={["/img/poke_sable.png"]}
-                count={slots.sableSlot === mainSableId ? slots.sableCount : undefined}
-                maxCount={sableMax}
-                onCountChange={slots.sableSlot === mainSableId ? onSableCountChange : undefined}
-                onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined} onClear={() => onClearSlot("sableSlot")}
-                onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
-                isLocked={isLocked}
-              />
-            )}
+            {/* サブレスロット（常時表示） */}
+            <ItemSlot
+              itemId={slots.sableSlot}
+              isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot}
+              isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot}
+              isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
+              hasTapSelected={!!tapSelectedId}
+              bgImageUrls={["/img/poke_sable.png"]}
+              count={slots.sableSlot === mainSableId ? slots.sableCount : undefined}
+              maxCount={sableMax}
+              onCountChange={slots.sableSlot === mainSableId ? onSableCountChange : undefined}
+              onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")} onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined} onClear={() => onClearSlot("sableSlot")}
+              onDragFromSlot={slots.sableSlot ? (e) => onDragFromSlot("sableSlot", slots.sableSlot!, e) : undefined}
+              isLocked={isLocked}
+            />
           </div>
 
           {/* 分割睡眠 2回目スロット（常にレンダリング・OFF時は非表示で高さ確保） */}
@@ -1735,23 +1683,21 @@ function DayCell({
               onDragFromSlot={slots.slot4 ? (e) => onDragFromSlot("slot4", slots.slot4!, e) : undefined}
               isLocked={isLocked}
             />
-            {/* 2回目睡眠用サブレスロット（slot3/slot4 にsableIncenseSetのおこうがある場合） */}
-            {(sableIncenseSet.has(slots.slot3!) || sableIncenseSet.has(slots.slot4!)) && (
-              <ItemSlot
-                itemId={slots.sableSlot2}
-                isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot2}
-                isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot2}
-                isTapSelected={tapSelectedId === slots.sableSlot2 && !!slots.sableSlot2}
-                hasTapSelected={!!tapSelectedId}
-                bgImageUrls={["/img/poke_sable.png"]}
-                count={slots.sableSlot2 === mainSableId ? slots.sableCount2 : undefined}
-                maxCount={sableMax2}
-                onCountChange={slots.sableSlot2 === mainSableId ? onSableCountChange2 : undefined}
-                onDrop={() => onDropSlot("sableSlot2")} onTap={() => onTapSlot("sableSlot2")} onTapItem={slots.sableSlot2 ? () => onTapFromSlot("sableSlot2", slots.sableSlot2!) : undefined} onClear={() => onClearSlot("sableSlot2")}
-                onDragFromSlot={slots.sableSlot2 ? (e) => onDragFromSlot("sableSlot2", slots.sableSlot2!, e) : undefined}
-                isLocked={isLocked}
-              />
-            )}
+            {/* 2回目睡眠用サブレスロット（常時表示・分割睡眠時） */}
+            <ItemSlot
+              itemId={slots.sableSlot2}
+              isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot2}
+              isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot2}
+              isTapSelected={tapSelectedId === slots.sableSlot2 && !!slots.sableSlot2}
+              hasTapSelected={!!tapSelectedId}
+              bgImageUrls={["/img/poke_sable.png"]}
+              count={slots.sableSlot2 === mainSableId ? slots.sableCount2 : undefined}
+              maxCount={sableMax2}
+              onCountChange={slots.sableSlot2 === mainSableId ? onSableCountChange2 : undefined}
+              onDrop={() => onDropSlot("sableSlot2")} onTap={() => onTapSlot("sableSlot2")} onTapItem={slots.sableSlot2 ? () => onTapFromSlot("sableSlot2", slots.sableSlot2!) : undefined} onClear={() => onClearSlot("sableSlot2")}
+              onDragFromSlot={slots.sableSlot2 ? (e) => onDragFromSlot("sableSlot2", slots.sableSlot2!, e) : undefined}
+              isLocked={isLocked}
+            />
           </div>
 
       </div>
@@ -1976,24 +1922,22 @@ function DayRow({
             onClear={() => onClearSlot("slot2")}
             isLocked={isLocked}
           />
-          {/* サブレスロット（sableIncenseSet配置時のみ） */}
-          {(sableIncenseSet.has(slots.slot1!) || sableIncenseSet.has(slots.slot2!)) && (
-            <ItemSlot
-              itemId={slots.sableSlot}
-              isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot}
-              isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot}
-              isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
-              hasTapSelected={!!tapSelectedId}
-              bgImageUrls={["/img/poke_sable.png"]}
-              count={slots.sableSlot === mainSableId ? slots.sableCount : undefined}
-              maxCount={sableMax}
-              onCountChange={slots.sableSlot === mainSableId ? onSableCountChange : undefined}
-              onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")}
-              onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined}
-              onClear={() => onClearSlot("sableSlot")}
-              isLocked={isLocked}
-            />
-          )}
+          {/* サブレスロット（常時表示） */}
+          <ItemSlot
+            itemId={slots.sableSlot}
+            isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot}
+            isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot}
+            isTapSelected={tapSelectedId === slots.sableSlot && !!slots.sableSlot}
+            hasTapSelected={!!tapSelectedId}
+            bgImageUrls={["/img/poke_sable.png"]}
+            count={slots.sableSlot === mainSableId ? slots.sableCount : undefined}
+            maxCount={sableMax}
+            onCountChange={slots.sableSlot === mainSableId ? onSableCountChange : undefined}
+            onDrop={() => onDropSlot("sableSlot")} onTap={() => onTapSlot("sableSlot")}
+            onTapItem={slots.sableSlot ? () => onTapFromSlot("sableSlot", slots.sableSlot!) : undefined}
+            onClear={() => onClearSlot("sableSlot")}
+            isLocked={isLocked}
+          />
         </div>
 
         {/* 分割睡眠 2回目スロット（OFF時も高さ確保） */}
@@ -2021,23 +1965,22 @@ function DayRow({
             onClear={() => onClearSlot("slot4")}
             isLocked={isLocked}
           />
-          {(sableIncenseSet.has(slots.slot3!) || sableIncenseSet.has(slots.slot4!)) && (
-            <ItemSlot
-              itemId={slots.sableSlot2}
-              isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot2}
-              isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot2}
-              isTapSelected={tapSelectedId === slots.sableSlot2 && !!slots.sableSlot2}
-              hasTapSelected={!!tapSelectedId}
-              bgImageUrls={["/img/poke_sable.png"]}
-              count={slots.sableSlot2 === mainSableId ? slots.sableCount2 : undefined}
-              maxCount={sableMax2}
-              onCountChange={slots.sableSlot2 === mainSableId ? onSableCountChange2 : undefined}
-              onDrop={() => onDropSlot("sableSlot2")} onTap={() => onTapSlot("sableSlot2")}
-              onTapItem={slots.sableSlot2 ? () => onTapFromSlot("sableSlot2", slots.sableSlot2!) : undefined}
-              onClear={() => onClearSlot("sableSlot2")}
-              isLocked={isLocked}
-            />
-          )}
+          {/* 2回目睡眠用サブレスロット（常時表示・分割睡眠時） */}
+          <ItemSlot
+            itemId={slots.sableSlot2}
+            isOver={isDragOver && (dragId === "master-sable" || dragId === mainSableId) && !slots.sableSlot2}
+            isTapTarget={(tapSelectedId === "master-sable" || tapSelectedId === mainSableId) && !slots.sableSlot2}
+            isTapSelected={tapSelectedId === slots.sableSlot2 && !!slots.sableSlot2}
+            hasTapSelected={!!tapSelectedId}
+            bgImageUrls={["/img/poke_sable.png"]}
+            count={slots.sableSlot2 === mainSableId ? slots.sableCount2 : undefined}
+            maxCount={sableMax2}
+            onCountChange={slots.sableSlot2 === mainSableId ? onSableCountChange2 : undefined}
+            onDrop={() => onDropSlot("sableSlot2")} onTap={() => onTapSlot("sableSlot2")}
+            onTapItem={slots.sableSlot2 ? () => onTapFromSlot("sableSlot2", slots.sableSlot2!) : undefined}
+            onClear={() => onClearSlot("sableSlot2")}
+            isLocked={isLocked}
+          />
         </div>
 
       </div>
