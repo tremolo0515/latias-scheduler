@@ -866,7 +866,7 @@ export function EventCalendar() {
         <div className="flex items-center justify-between mb-1.5">
           <p className="text-[9px] font-medium text-gray-500">バッグ <span className="text-gray-400">— タップ or ドラッグで配置</span></p>
           <button
-            onClick={() => { if (window.confirm("ロックされていない全てのスロットを空にしますか？")) clearPlan() }}
+            onClick={() => { if (window.confirm("ロックされていないスロットを空にしますか？")) clearPlan() }}
             className="text-[9px] text-gray-400 hover:text-red-400 border border-gray-200 hover:border-red-200 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
           >
             バッグに戻す
