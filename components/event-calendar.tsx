@@ -737,22 +737,34 @@ export function EventCalendar() {
                   >リセット</button>
                 </div>
               </div>
-              {currentEvent.umouShop.weeks.map((week, wi) => (
-                <div key={wi} className="mb-1">
-                  <p className="text-[12px] font-semibold text-purple-400 mb-0.5">{week.label}</p>
-                  {/* 全行を1つのgridに入れることでうもう量列が縦揃え */}
+              {(() => {
+                // 全週のエントリをフラット化して displayOrder でソート
+                const allEntries = currentEvent.umouShop.weeks.flatMap((week, wi) =>
+                  week.entries.map((entry, ei) => ({ entry, wi, ei }))
+                ).sort((a, b) => {
+                  const oa = a.entry.displayOrder ?? 999
+                  const ob = b.entry.displayOrder ?? 999
+                  return oa - ob
+                })
+                // アイテムIDが変わる境界を検出して区切りを入れる
+                let prevItemId: string | null | undefined = undefined
+                return (
                   <div className="grid items-center" style={{ gridTemplateColumns: "1.25rem auto auto 1fr 1.25rem auto 1.25rem", rowGap: "3px", columnGap: "10px" }}>
-                    {week.entries.map((entry, ei) => {
+                    {allEntries.map(({ entry, wi, ei }) => {
                       const key = `${wi}-${ei}`
                       const val = shopCounts[key] ?? 0
                       const item = entry.itemId ? getIncenseById(entry.itemId) : null
-                      return (<Fragment key={`${wi}-${ei}`}>
+                      const showDivider = prevItemId !== undefined && prevItemId !== entry.itemId
+                      prevItemId = entry.itemId
+                      const weekSuffix = entry.discounted ? (wi === 0 ? "割引1週目" : "割引2週目") : null
+                      return (<Fragment key={key}>
+                        {showDivider && <div className="col-span-7 h-px bg-gray-100 my-0.5" />}
                         {item
                           ? <img src={item.imageUrl} alt={item.name} width={20} height={20} className="w-5 h-5 object-contain" />
                           : <span />
                         }
                         <span className="text-[13px] text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
-                        <span className="text-[13px] text-purple-400 whitespace-nowrap">{entry.umouCost}🪶</span>
+                        <span className="text-[13px] text-purple-400 whitespace-nowrap">{entry.umouCost}🪶{weekSuffix && <span className="text-gray-400 text-[11px]">（{weekSuffix}）</span>}</span>
                         <span />
                         <button onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
                           className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none">－</button>
@@ -762,8 +774,8 @@ export function EventCalendar() {
                       </Fragment>)
                     })}
                   </div>
-                </div>
-              ))}
+                )
+              })()}
             </>) : (
               <p className="text-[9px] text-gray-400">データなし</p>
             )}

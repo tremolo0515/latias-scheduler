@@ -35,6 +35,10 @@ export interface ExchangeShopEntry {
   maxCount: number
   /** 必要うもう（1回あたり） */
   umouCost: number
+  /** 表示順（小さいほど上）。省略時は定義順 */
+  displayOrder?: number
+  /** 割引アイテム（週ラベルを付記する） */
+  discounted?: boolean
 }
 
 /** 週ごとの交換所 */
@@ -328,19 +332,20 @@ export const EVENTS: PokeSleepEvent[] = [
         {
           label: "第1週",
           entries: [
-            { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 2,  umouCost: 80  },
-            { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 7,  umouCost: 160 },
-            { label: "ラティアスのおこう×1",          itemId: "latias",       itemQty: 1, maxCount: 2,  umouCost: 80  },
-            { label: "ラティアスのおこう×1",          itemId: "latias",       itemQty: 1, maxCount: 3,  umouCost: 160 },
-            { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 2,  umouCost: 60  },
-            { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 10, umouCost: 120 },
+            { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 7,  umouCost: 160, displayOrder:  9 },
+            { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 2,  umouCost: 80,  displayOrder: 10, discounted: true },
+            { label: "ラティアスのおこう×1",         itemId: "latias",       itemQty: 1, maxCount: 3,  umouCost: 160, displayOrder: 19 },
+            { label: "ラティアスのおこう×1",         itemId: "latias",       itemQty: 1, maxCount: 2,  umouCost: 80,  displayOrder: 20, discounted: true },
+            { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 10, umouCost: 120, displayOrder: 29 },
+            { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 2,  umouCost: 60,  displayOrder: 30, discounted: true },
           ],
         },
         {
           label: "第2週（追加）",
           entries: [
-            { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 2, umouCost: 70 },
-            { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 2, umouCost: 50 },
+            { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 2, umouCost: 70, displayOrder: 12, discounted: true },
+            { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 2, umouCost: 50, displayOrder: 32, discounted: true },
+            { label: "ラティアスのおこう×1",         itemId: "latias",       itemQty: 1, maxCount: 1, umouCost: 70, displayOrder: 22, discounted: true },
           ],
         },
       ],
