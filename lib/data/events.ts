@@ -332,12 +332,12 @@ export const EVENTS: PokeSleepEvent[] = [
         {
           label: "第1週",
           entries: [
-            { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 7,  umouCost: 160, displayOrder:  9 },
             { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 2,  umouCost: 80,  displayOrder: 10, discounted: true },
-            { label: "ラティアスのおこう×1",         itemId: "latias",       itemQty: 1, maxCount: 3,  umouCost: 160, displayOrder: 19 },
+            { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 7,  umouCost: 160, displayOrder:  9 },
             { label: "ラティアスのおこう×1",         itemId: "latias",       itemQty: 1, maxCount: 2,  umouCost: 80,  displayOrder: 20, discounted: true },
-            { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 10, umouCost: 120, displayOrder: 29 },
+            { label: "ラティアスのおこう×1",         itemId: "latias",       itemQty: 1, maxCount: 3,  umouCost: 160, displayOrder: 19 },
             { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 2,  umouCost: 60,  displayOrder: 30, discounted: true },
+            { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 10, umouCost: 120, displayOrder: 29 },
           ],
         },
         {
