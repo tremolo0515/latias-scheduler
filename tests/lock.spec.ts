@@ -108,7 +108,7 @@ test.describe('ロック機能', () => {
 
     // 全てバッグに戻す
     page.once('dialog', d => d.accept())
-    await page.locator('button', { hasText: '全てバッグに戻す' }).click()
+    await page.locator('button', { hasText: 'バッグに戻す' }).click()
 
     // ロック日のアイテムは残っていること
     await expect(cell.locator('img[alt]:not([alt=""])').first()).toBeVisible()
@@ -161,7 +161,7 @@ test.describe('ロック機能', () => {
 
     // 全てバッグに戻す
     page.once('dialog', d => d.accept())
-    await page.locator('button', { hasText: '全てバッグに戻す' }).click()
+    await page.locator('button', { hasText: 'バッグに戻す' }).click()
 
     // 0日目（非ロック）はクリアされている
     const cell0 = dayCells(page).nth(0)
