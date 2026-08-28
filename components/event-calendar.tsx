@@ -260,7 +260,6 @@ export function EventCalendar() {
       const saved = localStorage.getItem(lsKey(currentEvent.id, "lockedDays"))
       setLockedDays(saved ? new Set(JSON.parse(saved)) : new Set())
     } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentEvent.id])
   useEffect(() => {
     localStorage.setItem(lsKey(currentEvent.id, "lockedDays"), JSON.stringify([...lockedDays]))
@@ -316,7 +315,6 @@ export function EventCalendar() {
       const s = localStorage.getItem(lsKey(currentEvent.id, "shop"))
       setShopCounts(s ? JSON.parse(s) : {})
     } catch { setShopCounts({}) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentEvent.id])
   useEffect(() => {
     localStorage.setItem(lsKey(currentEvent.id, "shop"), JSON.stringify(shopCounts))
