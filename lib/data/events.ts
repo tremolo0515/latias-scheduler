@@ -50,6 +50,8 @@ export interface ExchangeShopWeek {
 /** イベントに紐づくうもう交換所定義 */
 export interface UmouExchangeShop {
   weeks: ExchangeShopWeek[]
+  /** 公式未発表のため過去イベント同等の値で仮置き中（開催後に確定値へ更新したらtrueを削除する） */
+  provisional?: boolean
 }
 
 export interface SpecialDayConfig {
@@ -373,11 +375,13 @@ export const EVENTS: PokeSleepEvent[] = [
         barColor: "bg-purple-700/70 hover:bg-purple-700/80",
         textColor: "text-purple-100",
         effects: [
+          { label: "ミュウツー/ミュウ編成でねむけパワー1.1倍" },
+          { label: "とてもおおきなマゴのみを追加で拾うことがある" },
+          { label: "エスパータイプ強化", note: "食材+1, メインスキル確率1.5倍, メインスキルレベル+2" },
+          { label: "今週のカビゴンの好きなきのみが「マゴのみ」固定" },
           { label: "ピックアップポケモン出現確率UP" },
-          { label: "エスパータイプ強化", note: "食材+1, メインスキル確率1.5倍" },
-          { label: "とてもおおきなマゴのみ 最大所持数+8" },
-          { label: "ミュウツー/ミュウ編成でねむけパワーUP", note: "各1.1倍" },
           { label: "ミュウツーの満腹度低下 1日1回" },
+          { label: "全おてつだいポケモンの最大所持数+8" },
         ],
       },
       {
@@ -387,12 +391,14 @@ export const EVENTS: PokeSleepEvent[] = [
         barColor: "bg-purple-700/70 hover:bg-purple-700/80",
         textColor: "text-fuchsia-100",
         effects: [
-          { label: "ピックアップポケモン出現確率UP" },
-          { label: "エスパータイプ強化", note: "食材+1, メインスキル確率1.5倍, メインスキルレベル+5" },
-          { label: "とてもおおきなマゴのみ 最大所持数+15" },
           { label: "ミュウツー編成でねむけパワー1.3倍" },
-          { label: "一定エナジーからカビゴン育成開始" },
-          { label: "ねむけパワー1.5倍(9/27・推定)" },
+          { label: "とてもおおきなマゴのみを追加で拾うことがある" },
+          { label: "エスパータイプ強化", note: "食材+1, メインスキル確率1.5倍, メインスキルレベル+5" },
+          { label: "今週のカビゴンの好きなきのみが「マゴのみ」固定" },
+          { label: "ピックアップポケモン出現確率UP" },
+          { label: "ミュウツーの満腹度低下 1日1回" },
+          { label: "全おてつだいポケモンの最大所持数+15" },
+          { label: "大きいカビゴンが登場", note: "一定エナジーから育成開始" },
         ],
       },
     ],
@@ -419,6 +425,7 @@ export const EVENTS: PokeSleepEvent[] = [
     ],
     umouShop: {
       // ⚠️ 未発表のためラティオスイベントの構造・価格で仮置き（開催後に確定値へ更新）
+      provisional: true,
       weeks: [
         {
           label: "第1週",

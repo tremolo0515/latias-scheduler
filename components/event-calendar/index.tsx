@@ -523,7 +523,18 @@ export function EventCalendar() {
           <div className="flex-1 min-w-0 p-2 border-b md:border-b-0 md:border-r border-black/6">
             {currentEvent.umouShop ? (<>
               <div className="flex items-center justify-between mb-1">
-                <p className="text-xs font-semibold text-purple-700">{currencyIcon} {currencyName}交換所</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-purple-700">{currencyIcon} {currencyName}交換所</p>
+                  {currentEvent.umouShop.provisional && (
+                    // TODO: 公式発表の確定ラインナップに更新したら、この仮バッジとumouShop.provisional指定を削除する
+                    <span
+                      className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-300 rounded px-1 py-0.5 leading-none"
+                      title="ラインナップ・価格は未発表のため、過去イベント同等の値で仮置きしています"
+                    >
+                      仮
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5">
                   <div className="flex items-center gap-0.5">
                     <span className="text-xs font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
