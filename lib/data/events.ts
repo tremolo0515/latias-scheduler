@@ -100,6 +100,10 @@ export interface PokeSleepEvent {
   carryInItems?: { itemId: string; max: number; label?: string }[]
   /** うもう交換所定義（省略時は非表示） */
   umouShop?: UmouExchangeShop
+  /** イベント資材の名称（省略時 "うもう"） */
+  currencyName?: string
+  /** イベント資材の表示アイコン（省略時 "🪶"） */
+  currencyIcon?: string
 }
 
 // ─── buildEventDays ────────────────────────────────────────
@@ -346,6 +350,90 @@ export const EVENTS: PokeSleepEvent[] = [
             { label: "ラティオスのおこう×1",        itemId: "latios",       itemQty: 1, maxCount: 2, umouCost: 70, displayOrder: 12, discounted: true },
             { label: "ラティアス/ラティオスサブレ×1", itemId: "latios-sable", itemQty: 1, maxCount: 2, umouCost: 50, displayOrder: 32, discounted: true },
             { label: "ラティアスのおこう×1",         itemId: "latias",       itemQty: 1, maxCount: 1, umouCost: 70, displayOrder: 22, discounted: true },
+          ],
+        },
+      ],
+    },
+  },
+
+  // ── 秘境リサーチ！ミュウツーをおいかけて 2026/9/14〜9/27 ──
+  {
+    id: "mewtwo-2026-09",
+    name: "秘境リサーチ！ミュウツーをおいかけて",
+    shortName: "ミュウツー",
+    startDate: new Date(2026, 8, 14, 4, 0, 0),   // 9月14日 04:00
+    endDate:   new Date(2026, 8, 28, 3, 59, 0),  // 9月28日 03:59（9/27が最終日）
+    currencyName: "いでんし",
+    currencyIcon: "🧬",
+    calendarEvents: [
+      {
+        id: "mewtwo-w1",
+        name: "秘境リサーチ（第1週）",
+        colStart: 1, colSpan: 7, week: 0,
+        barColor: "bg-purple-700/70 hover:bg-purple-700/80",
+        textColor: "text-purple-100",
+        effects: [
+          { label: "ピックアップポケモン出現確率UP" },
+          { label: "エスパータイプ強化", note: "食材+1, メインスキル確率1.5倍" },
+          { label: "とてもおおきなマゴのみ 最大所持数+8" },
+          { label: "ミュウツー/ミュウ編成でねむけパワーUP", note: "各1.1倍" },
+          { label: "ミュウツーの満腹度低下 1日1回" },
+        ],
+      },
+      {
+        id: "mewtwo-w2",
+        name: "秘境リサーチ（第2週）",
+        colStart: 1, colSpan: 7, week: 1,
+        barColor: "bg-purple-700/70 hover:bg-purple-700/80",
+        textColor: "text-fuchsia-100",
+        effects: [
+          { label: "ピックアップポケモン出現確率UP" },
+          { label: "エスパータイプ強化", note: "食材+1, メインスキル確率1.5倍, メインスキルレベル+5" },
+          { label: "とてもおおきなマゴのみ 最大所持数+15" },
+          { label: "ミュウツー編成でねむけパワー1.3倍" },
+          { label: "一定エナジーからカビゴン育成開始" },
+          { label: "ねむけパワー1.5倍(9/27・推定)" },
+        ],
+      },
+    ],
+    umouPrices: {
+      // ⚠️ ラティオスイベントと同等の推定値（開催後に確定値へ更新すること）
+      okouW1:  [[2, 80], [7, 160]],
+      okouW2:  [[2, 70]],
+      sableW1: [[2, 60], [10, 120]],
+      sableW2: [[2, 50]],
+      sableFreeCount: 1,
+      mainIncenseId: "mewtwo",
+      mainSableId: "mewtwo-sable",
+    },
+    specialDays: {
+      specialDayIndices: new Set(),  // 期間内にニュームーンデー無し（9月新月は9/11頃）
+    },
+    itemIds: [
+      "kaifuku", "shuuchuu", "kouun", "seichou", "nakayoshi", "pokemon",
+      "mewtwo", "master-sable", "mewtwo-sable",
+    ],
+    mainIncenseId: "mewtwo",
+    carryInItems: [
+      { itemId: "mewtwo-sable", max: 1, label: "配布" },  // 運営配布1個（推定）
+    ],
+    umouShop: {
+      // ⚠️ 未発表のためラティオスイベントの構造・価格で仮置き（開催後に確定値へ更新）
+      weeks: [
+        {
+          label: "第1週",
+          entries: [
+            { label: "ミュウツーのおこう×1", itemId: "mewtwo",       itemQty: 1, maxCount: 2,  umouCost: 80,  displayOrder: 10, discounted: true },
+            { label: "ミュウツーのおこう×1", itemId: "mewtwo",       itemQty: 1, maxCount: 7,  umouCost: 160, displayOrder:  9 },
+            { label: "ミュウツーサブレ×1",   itemId: "mewtwo-sable", itemQty: 1, maxCount: 2,  umouCost: 60,  displayOrder: 30, discounted: true },
+            { label: "ミュウツーサブレ×1",   itemId: "mewtwo-sable", itemQty: 1, maxCount: 10, umouCost: 120, displayOrder: 29 },
+          ],
+        },
+        {
+          label: "第2週（追加）",
+          entries: [
+            { label: "ミュウツーのおこう×1", itemId: "mewtwo",       itemQty: 1, maxCount: 2, umouCost: 70, displayOrder: 12, discounted: true },
+            { label: "ミュウツーサブレ×1",   itemId: "mewtwo-sable", itemQty: 1, maxCount: 2, umouCost: 50, displayOrder: 32, discounted: true },
           ],
         },
       ],

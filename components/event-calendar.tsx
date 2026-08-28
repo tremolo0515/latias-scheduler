@@ -202,6 +202,8 @@ export function EventCalendar() {
   // サブレスロットを出現させるおこうIDセット（mainIncenseId + sableIncenseIds）
   const sableIncenseSet = new Set([currentEvent.mainIncenseId, ...(currentEvent.sableIncenseIds ?? [])])
   const eventItems = INCENSE_MASTERS.filter(i => currentEvent.itemIds.includes(i.id))
+  const currencyName = currentEvent.currencyName ?? "うもう"
+  const currencyIcon = currentEvent.currencyIcon ?? "🪶"
 
   // ── 在庫数（incense id → 個数）──
   const [inventory, setInventory] = useState<Record<string, number>>(
@@ -708,15 +710,15 @@ export function EventCalendar() {
           <div className="flex-1 min-w-0 p-2 border-b md:border-b-0 md:border-r border-black/6">
             {currentEvent.umouShop ? (<>
               <div className="flex items-center justify-between mb-1">
-                <p className="text-xs font-semibold text-purple-700">🪶 うもう交換所</p>
+                <p className="text-xs font-semibold text-purple-700">{currencyIcon} {currencyName}交換所</p>
                 <div className="flex items-center gap-1.5">
                   <div className="flex items-center gap-0.5">
                     <span className="text-xs font-bold text-purple-800">{totalUmou.toLocaleString()}</span>
-                    <span className="text-[10px] text-purple-500">🪶</span>
+                    <span className="text-[10px] text-purple-500">{currencyIcon}</span>
                   </div>
                   <button
                     onClick={() => {
-                      if (!window.confirm("うもう交換所をリセットしますか？\n交換済み数と在庫への加算分がすべて消えます。")) return
+                      if (!window.confirm(`${currencyName}交換所をリセットしますか？\n交換済み数と在庫への加算分がすべて消えます。`)) return
                       // shopCounts をリセット → 在庫から交換所加算分を差し引く
                       const shop = currentEvent.umouShop!
                       setInventory(inv => {
@@ -764,7 +766,7 @@ export function EventCalendar() {
                           : <span />
                         }
                         <span className="text-[13px] text-gray-600 leading-tight whitespace-nowrap" title={entry.label}>{entry.label}</span>
-                        <span className="text-[13px] text-purple-400 whitespace-nowrap">{entry.umouCost}🪶{weekSuffix && <span className="text-gray-400 text-[11px]">（{weekSuffix}）</span>}</span>
+                        <span className="text-[13px] text-purple-400 whitespace-nowrap">{entry.umouCost}{currencyIcon}{weekSuffix && <span className="text-gray-400 text-[11px]">（{weekSuffix}）</span>}</span>
                         <span />
                         <button onClick={() => handleShopCount(wi, ei, entry, Math.max(0, val - 1))}
                           className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 text-[13px] font-bold leading-none">－</button>

@@ -205,6 +205,38 @@ export const INCENSE_MASTERS: IncenseMaster[] = [
     preferEarlyWeek: false,
     spreadEvenly: false,
   },
+  // ─── ミュウツーイベント用アイテム ────────────────────────────
+  {
+    id: "mewtwo",
+    name: "ミュウツーのおこう",
+    maxStock: 14,
+    icon: "🟣",
+    imageUrl: "/img/okou_mewtwo.png",
+    effectType: "pokemon",
+    effectShort: "ミュウツー出現",
+    effectDetail: "ミュウツーが追加枠として出現する。こううんのおこうと組み合わせて大量のゆめのかけらを狙える。イベント期間後も使用可能。",
+    color: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+    preferWeekend: true,
+    preferLate: false,
+    preferEarlyWeek: false,
+    spreadEvenly: false,
+  },
+  {
+    id: "mewtwo-sable",
+    name: "ミュウツーサブレ",
+    maxStock: 14,
+    icon: "🍪",
+    imageUrl: "/img/mewtwo_sable.png",
+    effectType: "treat",
+    effectShort: "ミュウツーに使うおやつ（複数可）",
+    effectDetail: "ミュウツーのおこうと同時に設置して使用。1個でフレンドポイント+6。マスターサブレと排他的に使用。10/4にスーパーサブレへ自動変換。",
+    color: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+    pairedWith: "mewtwo",
+    preferWeekend: true,
+    preferLate: false,
+    preferEarlyWeek: false,
+    spreadEvenly: false,
+  },
 ]
 
 export function getIncenseById(id: string): IncenseMaster | undefined {
