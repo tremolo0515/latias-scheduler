@@ -68,7 +68,7 @@ export interface EventBarDef {
   colStart: number
   /** 何列スパンするか */
   colSpan: number
-  /** 属する週（0=第1週, 1=第2週） */
+  /** 属する週（0=第1週, 1=第2週, 2=イベント後） */
   week: number
   barColor: string
   textColor: string
@@ -401,6 +401,37 @@ export const EVENTS: PokeSleepEvent[] = [
           { label: "大きいカビゴンが登場", note: "一定エナジーから育成開始" },
         ],
       },
+      {
+        // グッドスリープデー 9/26(土)〜9/28(月)（満月 9/27(日)）。
+        // 9/26=dayIndex12, 9/27=dayIndex13 → 第2週6〜7列目
+        id: "goodsleep-mewtwo-w2",
+        name: "グッドスリープデー",
+        colStart: 6, colSpan: 2, week: 1,
+        barColor: "bg-amber-600/70 hover:bg-amber-500/80",
+        textColor: "text-amber-50",
+        effects: [
+          { label: "ねむけパワーUP", note: "満月9/27(日)は2倍、前後(9/26・9/28)は1.5倍" },
+          { label: "ポケモン睡眠EXP UP", note: "満月3倍、前後2倍" },
+          { label: "スリープポイント追加", note: "満月+1000pt、前後+500pt" },
+          { label: "ピッピ系統の出現確率UP", note: "満月は大ピックアップ、前後は中ピックアップ" },
+          { label: "期間: 9/26(土)〜9/28(月)", note: "ミュウツーイベントは9/28 3:59で終了" },
+        ],
+      },
+      {
+        // 9/28(月)=dayIndex14 → イベント後の行（week 2）の1列目
+        id: "goodsleep-mewtwo-w3",
+        name: "グッドスリープデー",
+        colStart: 1, colSpan: 1, week: 2,
+        barColor: "bg-amber-600/70 hover:bg-amber-500/80",
+        textColor: "text-amber-50",
+        effects: [
+          { label: "ねむけパワーUP", note: "満月9/27(日)は2倍、前後(9/26・9/28)は1.5倍" },
+          { label: "ポケモン睡眠EXP UP", note: "満月3倍、前後2倍" },
+          { label: "スリープポイント追加", note: "満月+1000pt、前後+500pt" },
+          { label: "ピッピ系統の出現確率UP", note: "満月は大ピックアップ、前後は中ピックアップ" },
+          { label: "期間: 9/26(土)〜9/28(月)", note: "ミュウツーイベントは9/28 3:59で終了" },
+        ],
+      },
     ],
     umouPrices: {
       // ⚠️ ラティオスイベントと同等の推定値（開催後に確定値へ更新すること）
@@ -413,7 +444,9 @@ export const EVENTS: PokeSleepEvent[] = [
       mainSableId: "mewtwo-sable",
     },
     specialDays: {
-      specialDayIndices: new Set(),  // 期間内にニュームーンデー無し（9月新月は9/11頃）
+      // 9/26(土)〜9/28(月) グッドスリープデー（満月9/27）。ニュームーンデーは期間外（9月新月は9/11頃）
+      specialDayIndices: new Set([12, 13, 14]),
+      specialDayLabel: "グッドスリープデー",
     },
     itemIds: [
       "kaifuku", "shuuchuu", "kouun", "seichou", "nakayoshi", "pokemon",
