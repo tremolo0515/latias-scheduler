@@ -36,6 +36,8 @@ interface DayCellProps {
   onDayMemoChange: (value: string) => void
   isLocked: boolean
   onToggleLock: () => void
+  /** この行にイベントバーが重なるか（イベント後の行でも予約スペースが要る） */
+  hasEventBar?: boolean
 }
 
 export function DayCell({
@@ -44,7 +46,7 @@ export function DayCell({
   onDropSlot, onTapSlot, onTapFromSlot, onClearSlot, onDragFromSlot, onSableCountChange, sableMax, onSableCountChange2, sableMax2, todayDayIndex, onToggleSplitSleep,
   mainIncenseId, mainSableId, sableIncenseSet, sableIncenseIds,
   dayMemo, onDayMemoChange,
-  isLocked, onToggleLock,
+  isLocked, onToggleLock, hasEventBar = false,
 }: DayCellProps) {
   const isSat = day.dayOfWeek === "土"
   const isSun = day.dayOfWeek === "日"
@@ -70,6 +72,8 @@ export function DayCell({
           </div>
           <LockToggleButton isLocked={isLocked} onToggle={onToggleLock} />
         </div>
+        {/* イベントバー用の予約スペース（EventBarsOverlay がここに重なる） */}
+        {hasEventBar && <div className="h-14 shrink-0" />}
         <div className="flex gap-0.5 mb-1">
           {sableIncenseSet.size > 1 && (
             <ItemSlot
@@ -134,8 +138,8 @@ export function DayCell({
         <LockToggleButton isLocked={isLocked} onToggle={onToggleLock} />
       </div>
 
-      {/* イベントバー用の予約スペース（EventBarsOverlay がここに重なる・イベント後は不要） */}
-      {!isPost && <div className="h-14 shrink-0" />}
+      {/* イベントバー用の予約スペース（EventBarsOverlay がここに重なる） */}
+      {(!isPost || hasEventBar) && <div className="h-14 shrink-0" />}
 
       {/* スロット */}
       <div className="flex-1 flex flex-col gap-0.5 w-full">

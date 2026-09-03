@@ -453,6 +453,8 @@ export function EventCalendar() {
   const week1 = eventDays.slice(0, 7)
   const week2 = eventDays.slice(7, 14)
   const week3 = eventDays.slice(14, 17)  // イベント後: 月〜火(おこう設置可) + 水(持ち越しのみ)
+  // イベント後の行にバー（グッドスリープデー等）があるか。行の高さを揃えるため全セルに渡す
+  const week3HasBars = currentEvent.calendarEvents.some(ev => ev.week === 2)
 
   return (
     <>
@@ -868,8 +870,9 @@ export function EventCalendar() {
           <EventBarsOverlay week={1} calendarEvents={currentEvent.calendarEvents} activeTooltipId={activeTooltip?.id ?? null} onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })} />
         </div>
 
-        {/* Week 3（イベント後: 月〜木） */}
-        <div className="grid gap-1 mt-1 items-stretch" style={{ gridTemplateColumns: "repeat(7, 9rem)" }}>
+        {/* Week 3（イベント後: 月〜木）。イベント期間をまたぐバー（グッドスリープデー等）をオーバーレイ */}
+        <div className="relative mt-1">
+        <div className="grid gap-1 items-stretch" style={{ gridTemplateColumns: "repeat(7, 9rem)" }}>
           {week3.map(day => (
             <DayCell
               key={day.date}
@@ -889,6 +892,7 @@ export function EventCalendar() {
                 setDragSource({ dayIndex: day.dayIndex, slot })
                 e.dataTransfer.setDragImage(e.target as Element, 20, 20)
               }}
+              hasEventBar={week3HasBars}
               onSableCountChange={(value) => changeSableCount(day.dayIndex, value)}
               sableMax={(() => {
                 const sid = currentEvent.umouPrices.mainSableId
@@ -919,6 +923,8 @@ export function EventCalendar() {
             />
           ))}
         </div>
+          <EventBarsOverlay week={2} calendarEvents={currentEvent.calendarEvents} activeTooltipId={activeTooltip?.id ?? null} onBarClick={(id, x, y) => setActiveTooltip(prev => prev?.id === id ? null : { id, x, y })} />
+        </div>
 
         {/* ── メモエリア（デスクトップ） ── */}
         <div className="mt-2 pb-6">
@@ -938,10 +944,10 @@ export function EventCalendar() {
         {[
           { label: "第1週", days: week1, weekIdx: 0 },
           { label: "第2週", days: week2, weekIdx: 1 },
-          { label: "イベント後", days: week3, weekIdx: -1 },
+          { label: "イベント後", days: week3, weekIdx: 2 },
         ].map(({ label, days, weekIdx }) => {
-          // この週に表示するイベントバー（イベント後は表示しない）
-          const weekBars = weekIdx >= 0 ? currentEvent.calendarEvents.filter(ev => ev.week === weekIdx) : []
+          // この週に表示するイベントバー
+          const weekBars = currentEvent.calendarEvents.filter(ev => ev.week === weekIdx)
           return (
           <section key={label} className="mb-3">
             {/* 週ラベル + イベントバッジ */}
